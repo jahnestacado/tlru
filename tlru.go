@@ -1,50 +1,32 @@
 package tlru
 
 import (
+	"fmt"
 	"sync"
 	"time"
 )
 
-type Cache interface {
-	Get(key string) interface{}
-	Set(entry Entry)
-	Keys() []string
-	Values() []interface{}
-}
+const (
+	// Eviction reasons
+	EvictionReasonDropped evictionReason = iota
+	EvictionReasonExpired
+	EvictionReasonReplaced
+	EvictionReasonDeleted
+)
 
-type Entry struct {
-	Key   string      `json:"key"`
-	Value interface{} `json:"value"`
-}
+const (
+	// Flavors
+	Read flavor = iota
+	Write
+)
 
-type CacheEntry struct {
-	Key         string      `json:"key"`
-	Value       interface{} `json:"value"`
-	Counter     int64       `json:"counter"`
-	LastUpdated time.Time   `json:"last_updated"`
-}
-
-type doublyLinkedNode struct {
-	Key         string
-	Value       interface{}
-	Counter     int64
-	LastUpdated time.Time
-	Previous    *doublyLinkedNode
-	Next        *doublyLinkedNode
-}
-
-type Config struct {
-	Size            int
-	TTL             time.Duration
-	EvictionChannel *chan CacheEntry
-}
-
-type lfu struct {
+type tlru struct {
+	sync.RWMutex
 	cache    map[string]*doublyLinkedNode
 	config   Config
-	mutex    *sync.RWMutex
 	headNode *doublyLinkedNode
 	tailNode *doublyLinkedNode
+	flavor   flavor
 }
 
 func New(config Config) Cache {
@@ -53,59 +35,71 @@ func New(config Config) Cache {
 	headNode.Next = tailNode
 	tailNode.Previous = headNode
 
-	return &lfu{
-		config:   config,
-		cache:    make(map[string]*doublyLinkedNode, 0),
-		mutex:    &sync.RWMutex{},
-		headNode: headNode,
-		tailNode: tailNode,
+	cache := &tlru{
+		config: config,
+		cache:  make(map[string]*doublyLinkedNode, 0),
 	}
+
+	cache.initializeDoublyLinkedList()
+
+	return cache
 }
 
-// func (c *lfu) print() {
-// 	next := c.headNode
-// 	for next != nil {
-// 		fmt.Printf("{%p} [%s - %p](%d) {%p} -> ", next.Previous, next.Key, next, next.Counter, next.Next)
-// 		next = next.Next
-// 	}
-// 	fmt.Println("----")
-// }
+func (c *tlru) Set(entry Entry) {
+	defer c.Unlock()
+	c.Lock()
 
-func (c *lfu) Set(entry Entry) {
-	defer c.mutex.Unlock()
-	c.mutex.Lock()
+	linkedEntry, exists := c.cache[entry.Key]
+	if exists && c.config.Flavor == Read {
+		c.evictEntry(linkedEntry, EvictionReasonReplaced)
+	}
 
-	_, exists := c.cache[entry.Key]
 	if !exists && len(c.cache) == c.config.Size {
-		c.evictEntry(c.tailNode.Previous)
+		c.evictEntry(c.tailNode.Previous, EvictionReasonDropped)
 	}
 
 	c.insertHeadNode(entry)
 }
 
-func (c *lfu) Get(key string) interface{} {
-	defer c.mutex.RUnlock()
-	c.mutex.RLock()
+func (c *tlru) Get(key string) *CacheEntry {
+	defer c.Unlock()
+	c.Lock()
 
 	linkedNode, exists := c.cache[key]
 	if !exists {
 		return nil
 	}
 
-	if c.config.TTL < time.Since(linkedNode.LastUpdated) {
-		c.evictEntry(linkedNode)
+	if c.config.TTL < time.Since(linkedNode.LastUpdatedAt) {
+		c.evictEntry(linkedNode, EvictionReasonExpired)
 		return nil
 	}
 
-	return linkedNode.Value
+	if c.config.Flavor == Read {
+		c.insertHeadNode(Entry{Key: key, Value: linkedNode.Value})
+	}
+
+	cacheEntry := linkedNode.ToCacheEntry()
+
+	return &cacheEntry
 }
 
-func (c *lfu) Keys() []string {
-	defer c.mutex.RUnlock()
-	c.mutex.RLock()
+func (c *tlru) Delete(key string) {
+	defer c.Unlock()
+	c.Lock()
+
+	linkedNode, exists := c.cache[key]
+	if exists {
+		c.evictEntry(linkedNode, EvictionReasonDeleted)
+	}
+}
+
+func (c *tlru) Keys() []string {
+	defer c.Unlock()
+	c.Lock()
 	c.evictExpiredEntries()
 
-	keys := make([]string, 0, c.config.Size)
+	keys := make([]string, 0, len(c.cache))
 	for key := range c.cache {
 		keys = append(keys, key)
 	}
@@ -113,75 +107,146 @@ func (c *lfu) Keys() []string {
 	return keys
 }
 
-func (c *lfu) Values() []interface{} {
-	defer c.mutex.RUnlock()
-	c.mutex.RLock()
+func (c *tlru) Entries() []CacheEntry {
+	defer c.Unlock()
+	c.Lock()
 	c.evictExpiredEntries()
 
-	values := make([]interface{}, 0, c.config.Size)
+	entries := make([]CacheEntry, 0, len(c.cache))
 	for _, linkedNode := range c.cache {
-		values = append(values, linkedNode.Value)
+		entries = append(entries, linkedNode.ToCacheEntry())
 	}
 
-	return values
+	return entries
 }
 
-func (c *lfu) insertHeadNode(entry Entry) {
-	counter := int64(1)
-	lastUpdated := time.Now().UTC()
+func (c *tlru) Clear() {
+	defer c.Unlock()
+	c.Lock()
+
+	if len(c.cache) > 0 {
+		c.cache = make(map[string]*doublyLinkedNode, 0)
+		c.initializeDoublyLinkedList()
+	}
+}
+
+func (c *tlru) GetState() State {
+	defer c.RUnlock()
+	c.RLock()
+
+	state := State{
+		Flavor:      c.config.Flavor,
+		Entries:     make([]stateEntry, 0, len(c.cache)),
+		ExtractedAt: time.Now().UTC(),
+	}
+
+	nextNode := c.headNode.Next
+	for nextNode != nil && nextNode != c.tailNode {
+		state.Entries = append(state.Entries, nextNode.ToStateEntry())
+		nextNode = nextNode.Next
+	}
+
+	return state
+}
+
+func (c *tlru) SetState(state State) error {
+	defer c.Unlock()
+	c.Lock()
+	if state.Flavor != c.config.Flavor {
+		return fmt.Errorf("tlru.SetState: Incompatible state flavor %s", state.Flavor.String())
+	}
+	c.Unlock()
+	c.Clear()
+	c.Lock()
+	previousNode := c.headNode
+	cache := make(map[string]*doublyLinkedNode, 0)
+	for _, stateEntry := range state.Entries {
+		rehydratedNode := &doublyLinkedNode{
+			Key:           stateEntry.Key,
+			Value:         stateEntry.Value,
+			Counter:       stateEntry.Counter,
+			LastUpdatedAt: stateEntry.LastUpdatedAt,
+			CreatedAt:     stateEntry.CreatedAt,
+		}
+		previousNode.Next = rehydratedNode
+		rehydratedNode.Previous = previousNode
+		previousNode = rehydratedNode
+		cache[rehydratedNode.Key] = rehydratedNode
+	}
+	previousNode.Next = c.tailNode
+	c.tailNode.Previous = previousNode
+	c.cache = cache
+
+	return nil
+}
+
+func (c *tlru) initializeDoublyLinkedList() {
+	headNode := &doublyLinkedNode{Key: "head_node"}
+	tailNode := &doublyLinkedNode{Key: "tail_node"}
+	headNode.Next = tailNode
+	tailNode.Previous = headNode
+	c.headNode = headNode
+	c.tailNode = tailNode
+}
+
+func (c *tlru) insertHeadNode(entry Entry) {
+	var counter int64
+	if c.config.Flavor == Write {
+		counter++
+	}
+
+	lastUpdatedAt := entry.LastUpdatedAt
+	if time.Time.IsZero(entry.LastUpdatedAt) {
+		lastUpdatedAt = time.Now().UTC()
+	}
 	linkedNode, exists := c.cache[entry.Key]
 	if exists {
-		if c.config.TTL >= time.Since(linkedNode.LastUpdated) {
-			counter++
+		if c.config.TTL >= time.Since(linkedNode.LastUpdatedAt) {
+			linkedNode.Counter++
 		}
-		linkedNode.Counter = counter
-		linkedNode.LastUpdated = lastUpdated
+		linkedNode.LastUpdatedAt = lastUpdatedAt
 
 		// Re-wire siblings of linkedNode
 		linkedNode.Next.Previous = linkedNode.Previous
 		linkedNode.Previous.Next = linkedNode.Next
 	} else {
 		linkedNode = &doublyLinkedNode{
-			Key:         entry.Key,
-			Value:       entry.Value,
-			Counter:     counter,
-			LastUpdated: lastUpdated,
-			Previous:    c.headNode,
-			Next:        c.headNode.Next,
+			Key:           entry.Key,
+			Value:         entry.Value,
+			Counter:       counter,
+			LastUpdatedAt: lastUpdatedAt,
+			Previous:      c.headNode,
+			Next:          c.headNode.Next,
+			CreatedAt:     time.Now().UTC(),
 		}
 
 		c.cache[entry.Key] = linkedNode
 	}
 
-	// // Re-wire headNode
+	// Re-wire headNode
 	linkedNode.Previous = c.headNode
 	linkedNode.Next = c.headNode.Next
 	c.headNode.Next.Previous = linkedNode
 	c.headNode.Next = linkedNode
 }
 
-func (c *lfu) evictEntry(evictedNode *doublyLinkedNode) {
-	evictedNode.Previous.Next = c.tailNode
-	c.tailNode.Previous = evictedNode.Previous
+func (c *tlru) evictEntry(evictedNode *doublyLinkedNode, reason evictionReason) {
+	evictedNode.Previous.Next = evictedNode.Next
+	evictedNode.Next.Previous = evictedNode.Previous
 	delete(c.cache, evictedNode.Key)
 
 	if c.config.EvictionChannel != nil {
-		*c.config.EvictionChannel <- CacheEntry{
-			Key:         evictedNode.Key,
-			Value:       evictedNode.Value,
-			Counter:     evictedNode.Counter,
-			LastUpdated: evictedNode.LastUpdated,
-		}
+		*c.config.EvictionChannel <- evictedNode.ToEvictedEntry(reason)
 	}
 }
 
-func (c *lfu) evictExpiredEntries() {
+func (c *tlru) evictExpiredEntries() {
 	previousNode := c.tailNode.Previous
 	for previousNode != nil && previousNode != c.headNode {
-		if c.config.TTL >= time.Since(previousNode.LastUpdated) {
+		if c.config.TTL >= time.Since(previousNode.LastUpdatedAt) {
 			break
 		}
-		c.evictEntry(previousNode)
+		c.evictEntry(previousNode, EvictionReasonExpired)
 		previousNode = previousNode.Previous
 	}
 }
