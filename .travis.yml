@@ -2,6 +2,7 @@ language: go
 
 go:
   - 1.13.x
+  - 1.14.x
 
 # Only clone the most recent commit.
 git:
@@ -12,5 +13,5 @@ install:
 
 script:
   - go test -race -v -coverprofile=coverage.txt -covermode=atomic
-# after_success:
-#   - bash <(curl -s https://codecov.io/bash)
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
