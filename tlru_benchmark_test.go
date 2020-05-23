@@ -1,3 +1,6 @@
+// * cable <https://github.com/jahnestacado/go-tlru>
+// * Copyright (c) 2020 Ioannis Tzanellis
+// * Licensed under the MIT License (MIT).
 package tlru
 
 import (
