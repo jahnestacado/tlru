@@ -23,44 +23,46 @@ go test -v
 
 ## Benchmarks
 
-_Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz x 8_ - _Ubuntu 18.04 LTS 4.15.3-041503-generic_
-
 ```sh
 go test -bench=.
 ```
 
 ```
+Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz x 8
+Ubuntu 18.04 LTS 4.15.3-041503-generic
+go version go1.13.3 linux/amd64
+
 goos: linux
 goarch: amd64
 pkg: tlru
-BenchmarkSet_ReadFlavor-8                                                        1730287               604 ns/op
-BenchmarkSet_WriteFlavor-8                                                       1805064               596 ns/op
-BenchmarkSet_EvictionChannelAttached_ReadFlavor-8                                1731804               672 ns/op
-BenchmarkSet_EvictionChannelAttached_WriteFlavor-8                               1772338               667 ns/op
-BenchmarkSet_ExistingKey_ReadFlavor-8                                            4243828               266 ns/op
-BenchmarkSet_ExistingKey_WriteFlavor-8                                           7314040               168 ns/op
-BenchmarkGet_EmptyCache_ReadFlavor-8                                            19077559                66.4 ns/op
-BenchmarkGet_EmptyCache_WriteFlavor-8                                           18083570                66.3 ns/op
-BenchmarkGet_NonExistingKey_ReadFlavor-8                                        27492775                45.0 ns/op
-BenchmarkGet_NonExistingKey_WriteFlavor-8                                       26621788                45.1 ns/op
-BenchmarkGet_ExistingKey_ReadFlavor-8                                            4380112               235 ns/op
-BenchmarkGet_ExistingKey_WriteFlavor-8                                           6341376               188 ns/op
-BenchmarkSet_Parallel_ReadFlavor-8                                               1683429               678 ns/op
-BenchmarkSet_Parallel_WriteFlavor-8                                              1697404               661 ns/op
-BenchmarkGet_FullCache_Parallel_ReadFlavor-8                                     3324580               324 ns/op
-BenchmarkGet_FullCache_Parallel_WriteFlavor-8                                    4217967               273 ns/op
-BenchmarkDelete_FullCache_Parallel_ReadFlavor-8                                  4306207               253 ns/op
-BenchmarkDelete_FullCache_Parallel_WriteFlavor-8                                 4283239               258 ns/op
-BenchmarkDelete_FullCache_Parallel_EvictionChannelAttached_ReadFlavor-8          3930772               289 ns/op
-BenchmarkDelete_FullCache_Parallel_EvictionChannelAttached_WriteFlavor-8         3913034               289 ns/op
-BenchmarkKeys_EmptyCache_ReadFlavor-8                                           26115826                44.1 ns/op
-BenchmarkKeys_EmptyCache_WriteFlavor-8                                          27526776                44.1 ns/op
-BenchmarkKeys_FullCache_ReadFlavor-8                                                  75          19673257 ns/op
-BenchmarkKeys_FullCache_WriteFlavor-8                                                 75          19900484 ns/op
-BenchmarkEntries_EmptyCache_ReadFlavor-8                                        26489229                44.4 ns/op
-BenchmarkEntries_EmptyCache_WriteFlavor-8                                       27718692                45.4 ns/op
-BenchmarkEntries_FullCache_ReadFlavor-8                                               15          87283280 ns/op
-BenchmarkEntries_FullCache_WriteFlavor-8                                              14          83859209 ns/op
+BenchmarkGet_EmptyCache_LRA-8                                           18442940                66.8 ns/op
+BenchmarkGet_EmptyCache_LRI-8                                           18425134                67.7 ns/op
+BenchmarkGet_NonExistingKey_LRA-8                                       26694182                47.6 ns/op
+BenchmarkGet_NonExistingKey_LRI-8                                       26802243                46.1 ns/op
+BenchmarkGet_ExistingKey_LRA-8                                           5511726               205 ns/op
+BenchmarkGet_ExistingKey_LRI-8                                           6341955               172 ns/op
+BenchmarkGet_FullCache_Parallel_LRA-8                                    3181060               328 ns/op
+BenchmarkGet_FullCache_Parallel_LRI-8                                    4453850               264 ns/op
+BenchmarkSet_LRA-8                                                       1841535               576 ns/op
+BenchmarkSet_LRI-8                                                       1835179               573 ns/op
+BenchmarkSet_EvictionChannelAttached_LRA-8                               1908260               619 ns/op
+BenchmarkSet_EvictionChannelAttached_LRI-8                               1939909               647 ns/op
+BenchmarkSet_ExistingKey_LRA-8                                           4773052               262 ns/op
+BenchmarkSet_ExistingKey_LRI-8                                           7399498               172 ns/op
+BenchmarkSet_Parallel_LRA-8                                              1671363               676 ns/op
+BenchmarkSet_Parallel_LRI-8                                              1637257               653 ns/op
+BenchmarkDelete_FullCache_Parallel_LRA-8                                 4280836               255 ns/op
+BenchmarkDelete_FullCache_Parallel_LRI-8                                 4194710               256 ns/op
+BenchmarkDelete_FullCache_Parallel_EvictionChannelAttached_LRA-8         3902163               288 ns/op
+BenchmarkDelete_FullCache_Parallel_EvictionChannelAttached_LRI-8         3934852               288 ns/op
+BenchmarkKeys_EmptyCache_LRA-8                                          25932662                45.5 ns/op
+BenchmarkKeys_EmptyCache_LRI-8                                          26435928                45.2 ns/op
+BenchmarkKeys_FullCache_LRA-8                                                 74          20248567 ns/op
+BenchmarkKeys_FullCache_LRI-8                                                 75          19956063 ns/op
+BenchmarkEntries_EmptyCache_LRA-8                                       24852736                44.9 ns/op
+BenchmarkEntries_EmptyCache_LRI-8                                       26197702                44.5 ns/op
+BenchmarkEntries_FullCache_LRA-8                                              15          89408908 ns/op
+BenchmarkEntries_FullCache_LRI-8                                              14          79726873 ns/op
 ```
 
 ## License
