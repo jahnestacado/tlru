@@ -197,9 +197,9 @@ func (c *tlru) insertHeadNode(entry Entry) {
 		counter++
 	}
 
-	lastUpdatedAt := entry.LastUpdatedAt
-	if time.Time.IsZero(entry.LastUpdatedAt) {
-		lastUpdatedAt = time.Now().UTC()
+	lastUpdatedAt := time.Now().UTC()
+	if entry.Timestamp != nil {
+		lastUpdatedAt = *entry.Timestamp
 	}
 	linkedNode, exists := c.cache[entry.Key]
 	if exists {

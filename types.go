@@ -24,9 +24,9 @@ type Config struct {
 }
 
 type Entry struct {
-	Key           string      `json:"key"`
-	Value         interface{} `json:"value"`
-	LastUpdatedAt time.Time   `json:"last_updated_at"`
+	Key       string      `json:"key"`
+	Value     interface{} `json:"value"`
+	Timestamp *time.Time  `json:"timestamp"`
 }
 
 type CacheEntry struct {

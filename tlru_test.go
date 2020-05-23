@@ -174,8 +174,10 @@ func TestLRUCacheSetAndGetWithProvidedLastUpdatedProperty(t *testing.T) {
 		}
 		cache := New(config)
 
-		expiredEntry := Entry{Key: "expired", Value: 1, LastUpdatedAt: time.Date(1900, 2, 1, 12, 30, 0, 0, time.UTC)}
-		nonExpiredEntry := Entry{Key: "not-expired", Value: 1, LastUpdatedAt: time.Now()}
+		expiredEntryTimestamp := time.Date(1900, 2, 1, 12, 30, 0, 0, time.UTC)
+		expiredEntry := Entry{Key: "expired", Value: 1, Timestamp: &expiredEntryTimestamp}
+		nonExpiredEntryTimestamp := time.Now()
+		nonExpiredEntry := Entry{Key: "not-expired", Value: 1, Timestamp: &nonExpiredEntryTimestamp}
 
 		cache.Set(entry1)
 		cache.Set(expiredEntry)
