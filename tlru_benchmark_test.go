@@ -147,7 +147,7 @@ func BenchmarkSet_LRI(b *testing.B) {
 }
 
 func BenchmarkSet_EvictionChannelAttached_LRA(b *testing.B) {
-	evictionChannel := make(chan EvictedEntry, 1)
+	evictionChannel := make(chan EvictedEntry, 0)
 	config := Config{
 		Size:            smallSize,
 		TTL:             time.Minute,
@@ -168,7 +168,7 @@ func BenchmarkSet_EvictionChannelAttached_LRA(b *testing.B) {
 }
 
 func BenchmarkSet_EvictionChannelAttached_LRI(b *testing.B) {
-	evictionChannel := make(chan EvictedEntry, 1)
+	evictionChannel := make(chan EvictedEntry, 0)
 	config := Config{
 		Size:            smallSize,
 		TTL:             time.Minute,
@@ -271,7 +271,7 @@ func BenchmarkDelete_FullCache_Parallel_LRI(b *testing.B) {
 }
 
 func BenchmarkDelete_FullCache_Parallel_EvictionChannelAttached_LRA(b *testing.B) {
-	evictionChannel := make(chan EvictedEntry, 1)
+	evictionChannel := make(chan EvictedEntry, 0)
 	config := Config{
 		Size:            bigSize,
 		TTL:             time.Minute,
@@ -302,7 +302,7 @@ func BenchmarkDelete_FullCache_Parallel_EvictionChannelAttached_LRA(b *testing.B
 }
 
 func BenchmarkDelete_FullCache_Parallel_EvictionChannelAttached_LRI(b *testing.B) {
-	evictionChannel := make(chan EvictedEntry, 1)
+	evictionChannel := make(chan EvictedEntry, 0)
 	config := Config{
 		Size:            bigSize,
 		TTL:             time.Minute,
