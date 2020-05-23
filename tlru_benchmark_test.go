@@ -16,113 +16,33 @@ const (
 
 var (
 	readFlavorConfig = Config{
-		Size:   bigSize,
-		TTL:    time.Minute,
-		Flavor: Read,
+		Size:           bigSize,
+		TTL:            time.Minute,
+		EvictionPolicy: LRA,
 	}
 
 	writeFlavorConfig = Config{
-		Size:   bigSize,
-		TTL:    time.Minute,
-		Flavor: Write,
+		Size:           bigSize,
+		TTL:            time.Minute,
+		EvictionPolicy: LRI,
 	}
 )
 
-func BenchmarkSet_ReadFlavor(b *testing.B) {
-	cache := New(readFlavorConfig)
-
-	for i := 0; i < b.N; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
-	}
-}
-
-func BenchmarkSet_WriteFlavor(b *testing.B) {
-	cache := New(writeFlavorConfig)
-
-	for i := 0; i < b.N; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
-	}
-}
-
-func BenchmarkSet_EvictionChannelAttached_ReadFlavor(b *testing.B) {
-	evictionChannel := make(chan EvictedEntry, 1)
-	config := Config{
-		Size:            smallSize,
-		TTL:             time.Minute,
-		EvictionChannel: &evictionChannel,
-		Flavor:          Read,
-	}
-	cache := New(config)
-
-	go func() {
-		for {
-			<-evictionChannel
-		}
-	}()
-
-	for i := 0; i < b.N; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
-	}
-}
-
-func BenchmarkSet_EvictionChannelAttached_WriteFlavor(b *testing.B) {
-	evictionChannel := make(chan EvictedEntry, 1)
-	config := Config{
-		Size:            smallSize,
-		TTL:             time.Minute,
-		EvictionChannel: &evictionChannel,
-		Flavor:          Write,
-	}
-	cache := New(config)
-
-	go func() {
-		for {
-			<-evictionChannel
-		}
-	}()
-
-	for i := 0; i < b.N; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
-	}
-}
-
-func BenchmarkSet_ExistingKey_ReadFlavor(b *testing.B) {
-	cache := New(readFlavorConfig)
-	cache.Set(Entry{Key: "existing-key", Value: bigSize})
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		cache.Set(Entry{Key: "existing-key", Value: bigSize})
-	}
-}
-
-func BenchmarkSet_ExistingKey_WriteFlavor(b *testing.B) {
-	cache := New(writeFlavorConfig)
-	cache.Set(Entry{Key: "existing-key", Value: bigSize})
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		cache.Set(Entry{Key: "existing-key", Value: bigSize})
-	}
-}
-
-func BenchmarkGet_EmptyCache_ReadFlavor(b *testing.B) {
+func BenchmarkGet_EmptyCache_LRA(b *testing.B) {
 	cache := New(readFlavorConfig)
 	for i := 0; i < b.N; i++ {
 		cache.Get(strconv.Itoa(i))
 	}
 }
 
-func BenchmarkGet_EmptyCache_WriteFlavor(b *testing.B) {
+func BenchmarkGet_EmptyCache_LRI(b *testing.B) {
 	cache := New(writeFlavorConfig)
 	for i := 0; i < b.N; i++ {
 		cache.Get(strconv.Itoa(i))
 	}
 }
 
-func BenchmarkGet_NonExistingKey_ReadFlavor(b *testing.B) {
+func BenchmarkGet_NonExistingKey_LRA(b *testing.B) {
 	cache := New(readFlavorConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -135,7 +55,7 @@ func BenchmarkGet_NonExistingKey_ReadFlavor(b *testing.B) {
 	}
 }
 
-func BenchmarkGet_NonExistingKey_WriteFlavor(b *testing.B) {
+func BenchmarkGet_NonExistingKey_LRI(b *testing.B) {
 	cache := New(writeFlavorConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -148,7 +68,7 @@ func BenchmarkGet_NonExistingKey_WriteFlavor(b *testing.B) {
 	}
 }
 
-func BenchmarkGet_ExistingKey_ReadFlavor(b *testing.B) {
+func BenchmarkGet_ExistingKey_LRA(b *testing.B) {
 	cache := New(readFlavorConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -161,7 +81,7 @@ func BenchmarkGet_ExistingKey_ReadFlavor(b *testing.B) {
 	}
 }
 
-func BenchmarkGet_ExistingKey_WriteFlavor(b *testing.B) {
+func BenchmarkGet_ExistingKey_LRI(b *testing.B) {
 	cache := New(writeFlavorConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -174,31 +94,7 @@ func BenchmarkGet_ExistingKey_WriteFlavor(b *testing.B) {
 	}
 }
 
-func BenchmarkSet_Parallel_ReadFlavor(b *testing.B) {
-	cache := New(readFlavorConfig)
-
-	i := 0
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			i++
-			cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
-		}
-	})
-}
-
-func BenchmarkSet_Parallel_WriteFlavor(b *testing.B) {
-	cache := New(writeFlavorConfig)
-
-	i := 0
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			i++
-			cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
-		}
-	})
-}
-
-func BenchmarkGet_FullCache_Parallel_ReadFlavor(b *testing.B) {
+func BenchmarkGet_FullCache_Parallel_LRA(b *testing.B) {
 	cache := New(readFlavorConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -216,7 +112,7 @@ func BenchmarkGet_FullCache_Parallel_ReadFlavor(b *testing.B) {
 	})
 }
 
-func BenchmarkGet_FullCache_Parallel_WriteFlavor(b *testing.B) {
+func BenchmarkGet_FullCache_Parallel_LRI(b *testing.B) {
 	cache := New(writeFlavorConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -234,7 +130,111 @@ func BenchmarkGet_FullCache_Parallel_WriteFlavor(b *testing.B) {
 	})
 }
 
-func BenchmarkDelete_FullCache_Parallel_ReadFlavor(b *testing.B) {
+func BenchmarkSet_LRA(b *testing.B) {
+	cache := New(readFlavorConfig)
+
+	for i := 0; i < b.N; i++ {
+		cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
+	}
+}
+
+func BenchmarkSet_LRI(b *testing.B) {
+	cache := New(writeFlavorConfig)
+
+	for i := 0; i < b.N; i++ {
+		cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
+	}
+}
+
+func BenchmarkSet_EvictionChannelAttached_LRA(b *testing.B) {
+	evictionChannel := make(chan EvictedEntry, 1)
+	config := Config{
+		Size:            smallSize,
+		TTL:             time.Minute,
+		EvictionChannel: &evictionChannel,
+		EvictionPolicy:  LRA,
+	}
+	cache := New(config)
+
+	go func() {
+		for {
+			<-evictionChannel
+		}
+	}()
+
+	for i := 0; i < b.N; i++ {
+		cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
+	}
+}
+
+func BenchmarkSet_EvictionChannelAttached_LRI(b *testing.B) {
+	evictionChannel := make(chan EvictedEntry, 1)
+	config := Config{
+		Size:            smallSize,
+		TTL:             time.Minute,
+		EvictionChannel: &evictionChannel,
+		EvictionPolicy:  LRI,
+	}
+	cache := New(config)
+
+	go func() {
+		for {
+			<-evictionChannel
+		}
+	}()
+
+	for i := 0; i < b.N; i++ {
+		cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
+	}
+}
+
+func BenchmarkSet_ExistingKey_LRA(b *testing.B) {
+	cache := New(readFlavorConfig)
+	cache.Set(Entry{Key: "existing-key", Value: bigSize})
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		cache.Set(Entry{Key: "existing-key", Value: bigSize})
+	}
+}
+
+func BenchmarkSet_ExistingKey_LRI(b *testing.B) {
+	cache := New(writeFlavorConfig)
+	cache.Set(Entry{Key: "existing-key", Value: bigSize})
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		cache.Set(Entry{Key: "existing-key", Value: bigSize})
+	}
+}
+
+func BenchmarkSet_Parallel_LRA(b *testing.B) {
+	cache := New(readFlavorConfig)
+
+	i := 0
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			i++
+			cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
+		}
+	})
+}
+
+func BenchmarkSet_Parallel_LRI(b *testing.B) {
+	cache := New(writeFlavorConfig)
+
+	i := 0
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			i++
+			cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
+		}
+	})
+}
+
+func BenchmarkDelete_FullCache_Parallel_LRA(b *testing.B) {
 	cache := New(readFlavorConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -252,7 +252,7 @@ func BenchmarkDelete_FullCache_Parallel_ReadFlavor(b *testing.B) {
 	})
 }
 
-func BenchmarkDelete_FullCache_Parallel_WriteFlavor(b *testing.B) {
+func BenchmarkDelete_FullCache_Parallel_LRI(b *testing.B) {
 	cache := New(writeFlavorConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -270,13 +270,13 @@ func BenchmarkDelete_FullCache_Parallel_WriteFlavor(b *testing.B) {
 	})
 }
 
-func BenchmarkDelete_FullCache_Parallel_EvictionChannelAttached_ReadFlavor(b *testing.B) {
+func BenchmarkDelete_FullCache_Parallel_EvictionChannelAttached_LRA(b *testing.B) {
 	evictionChannel := make(chan EvictedEntry, 1)
 	config := Config{
 		Size:            bigSize,
 		TTL:             time.Minute,
 		EvictionChannel: &evictionChannel,
-		Flavor:          Read,
+		EvictionPolicy:  LRA,
 	}
 	cache := New(config)
 
@@ -301,13 +301,13 @@ func BenchmarkDelete_FullCache_Parallel_EvictionChannelAttached_ReadFlavor(b *te
 	})
 }
 
-func BenchmarkDelete_FullCache_Parallel_EvictionChannelAttached_WriteFlavor(b *testing.B) {
+func BenchmarkDelete_FullCache_Parallel_EvictionChannelAttached_LRI(b *testing.B) {
 	evictionChannel := make(chan EvictedEntry, 1)
 	config := Config{
 		Size:            bigSize,
 		TTL:             time.Minute,
 		EvictionChannel: &evictionChannel,
-		Flavor:          Write,
+		EvictionPolicy:  LRI,
 	}
 	cache := New(config)
 
@@ -331,21 +331,21 @@ func BenchmarkDelete_FullCache_Parallel_EvictionChannelAttached_WriteFlavor(b *t
 	})
 }
 
-func BenchmarkKeys_EmptyCache_ReadFlavor(b *testing.B) {
+func BenchmarkKeys_EmptyCache_LRA(b *testing.B) {
 	cache := New(readFlavorConfig)
 	for i := 0; i < b.N; i++ {
 		cache.Keys()
 	}
 }
 
-func BenchmarkKeys_EmptyCache_WriteFlavor(b *testing.B) {
+func BenchmarkKeys_EmptyCache_LRI(b *testing.B) {
 	cache := New(writeFlavorConfig)
 	for i := 0; i < b.N; i++ {
 		cache.Keys()
 	}
 }
 
-func BenchmarkKeys_FullCache_ReadFlavor(b *testing.B) {
+func BenchmarkKeys_FullCache_LRA(b *testing.B) {
 	cache := New(readFlavorConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -358,7 +358,7 @@ func BenchmarkKeys_FullCache_ReadFlavor(b *testing.B) {
 	}
 }
 
-func BenchmarkKeys_FullCache_WriteFlavor(b *testing.B) {
+func BenchmarkKeys_FullCache_LRI(b *testing.B) {
 	cache := New(writeFlavorConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -371,21 +371,21 @@ func BenchmarkKeys_FullCache_WriteFlavor(b *testing.B) {
 	}
 }
 
-func BenchmarkEntries_EmptyCache_ReadFlavor(b *testing.B) {
+func BenchmarkEntries_EmptyCache_LRA(b *testing.B) {
 	cache := New(readFlavorConfig)
 	for i := 0; i < b.N; i++ {
 		cache.Entries()
 	}
 }
 
-func BenchmarkEntries_EmptyCache_WriteFlavor(b *testing.B) {
+func BenchmarkEntries_EmptyCache_LRI(b *testing.B) {
 	cache := New(writeFlavorConfig)
 	for i := 0; i < b.N; i++ {
 		cache.Entries()
 	}
 }
 
-func BenchmarkEntries_FullCache_ReadFlavor(b *testing.B) {
+func BenchmarkEntries_FullCache_LRA(b *testing.B) {
 	cache := New(readFlavorConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -398,7 +398,7 @@ func BenchmarkEntries_FullCache_ReadFlavor(b *testing.B) {
 	}
 }
 
-func BenchmarkEntries_FullCache_WriteFlavor(b *testing.B) {
+func BenchmarkEntries_FullCache_LRI(b *testing.B) {
 	cache := New(writeFlavorConfig)
 
 	for i := 0; i < bigSize; i++ {

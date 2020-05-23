@@ -18,18 +18,17 @@ const (
 )
 
 const (
-	// Flavors
-	Read flavor = iota
-	Write
+	LRA evictionPolicy = iota
+	LRI
 )
 
 type tlru struct {
 	sync.RWMutex
-	cache    map[string]*doublyLinkedNode
-	config   Config
-	headNode *doublyLinkedNode
-	tailNode *doublyLinkedNode
-	flavor   flavor
+	cache          map[string]*doublyLinkedNode
+	config         Config
+	headNode       *doublyLinkedNode
+	tailNode       *doublyLinkedNode
+	evictionPolicy evictionPolicy
 }
 
 func New(config Config) Cache {
@@ -53,7 +52,7 @@ func (c *tlru) Set(entry Entry) {
 	c.Lock()
 
 	linkedEntry, exists := c.cache[entry.Key]
-	if exists && c.config.Flavor == Read {
+	if exists && c.config.EvictionPolicy == LRA {
 		c.evictEntry(linkedEntry, EvictionReasonReplaced)
 	}
 
@@ -78,7 +77,7 @@ func (c *tlru) Get(key string) *CacheEntry {
 		return nil
 	}
 
-	if c.config.Flavor == Read {
+	if c.config.EvictionPolicy == LRA {
 		c.insertHeadNode(Entry{Key: key, Value: linkedNode.Value})
 	}
 
@@ -138,9 +137,9 @@ func (c *tlru) GetState() State {
 	c.RLock()
 
 	state := State{
-		Flavor:      c.config.Flavor,
-		Entries:     make([]stateEntry, 0, len(c.cache)),
-		ExtractedAt: time.Now().UTC(),
+		EvictionPolicy: c.config.EvictionPolicy,
+		Entries:        make([]stateEntry, 0, len(c.cache)),
+		ExtractedAt:    time.Now().UTC(),
 	}
 
 	nextNode := c.headNode.Next
@@ -155,8 +154,8 @@ func (c *tlru) GetState() State {
 func (c *tlru) SetState(state State) error {
 	defer c.Unlock()
 	c.Lock()
-	if state.Flavor != c.config.Flavor {
-		return fmt.Errorf("tlru.SetState: Incompatible state flavor %s", state.Flavor.String())
+	if state.EvictionPolicy != c.config.EvictionPolicy {
+		return fmt.Errorf("tlru.SetState: Incompatible state EvictionPolicy %s", state.EvictionPolicy.String())
 	}
 	c.Unlock()
 	c.Clear()
@@ -194,7 +193,7 @@ func (c *tlru) initializeDoublyLinkedList() {
 
 func (c *tlru) insertHeadNode(entry Entry) {
 	var counter int64
-	if c.config.Flavor == Write {
+	if c.config.EvictionPolicy == LRI {
 		counter++
 	}
 

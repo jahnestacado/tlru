@@ -11,22 +11,22 @@ import (
 )
 
 var (
-	entry1  = Entry{Key: "entry1", Value: 1}
-	entry2  = Entry{Key: "entry2", Value: 2}
-	entry3  = Entry{Key: "entry3", Value: 3}
-	entry4  = Entry{Key: "entry4", Value: 4}
-	flavors = []flavor{Read, Write}
+	entry1   = Entry{Key: "entry1", Value: 1}
+	entry2   = Entry{Key: "entry2", Value: 2}
+	entry3   = Entry{Key: "entry3", Value: 3}
+	entry4   = Entry{Key: "entry4", Value: 4}
+	policies = []evictionPolicy{LRA, LRI}
 )
 
 // Unit tests
 // -----------------------------------------------------------------------------
 func TestLRUCacheSetAndGet(t *testing.T) {
 	assert := assert.New(t)
-	for _, flavor := range flavors {
+	for _, policy := range policies {
 		config := Config{
-			Size:   1,
-			TTL:    time.Millisecond,
-			Flavor: flavor,
+			Size:           1,
+			TTL:            time.Millisecond,
+			EvictionPolicy: policy,
 		}
 		cache := New(config)
 
@@ -42,11 +42,11 @@ func TestLRUCacheSetAndGet(t *testing.T) {
 
 func TestLRUCacheDelete(t *testing.T) {
 	assert := assert.New(t)
-	for _, flavor := range flavors {
+	for _, policy := range policies {
 		config := Config{
-			Size:   10,
-			TTL:    time.Millisecond,
-			Flavor: flavor,
+			Size:           10,
+			TTL:            time.Millisecond,
+			EvictionPolicy: policy,
 		}
 		cache := New(config)
 
@@ -74,11 +74,11 @@ func TestLRUCacheDelete(t *testing.T) {
 
 func TestLRUCacheKeys(t *testing.T) {
 	assert := assert.New(t)
-	for _, flavor := range flavors {
+	for _, policy := range policies {
 		config := Config{
-			Size:   10,
-			TTL:    time.Millisecond,
-			Flavor: flavor,
+			Size:           10,
+			TTL:            time.Millisecond,
+			EvictionPolicy: policy,
 		}
 		cache := New(config)
 
@@ -99,11 +99,11 @@ func TestLRUCacheKeys(t *testing.T) {
 
 func TestLRUCacheEntries(t *testing.T) {
 	assert := assert.New(t)
-	for _, flavor := range flavors {
+	for _, policy := range policies {
 		config := Config{
-			Size:   10,
-			TTL:    time.Millisecond,
-			Flavor: flavor,
+			Size:           10,
+			TTL:            time.Millisecond,
+			EvictionPolicy: policy,
 		}
 		cache := New(config)
 
@@ -129,11 +129,11 @@ func TestLRUCacheEntries(t *testing.T) {
 
 func TestLRUCacheClear(t *testing.T) {
 	assert := assert.New(t)
-	for _, flavor := range flavors {
+	for _, policy := range policies {
 		config := Config{
-			Size:   10,
-			TTL:    time.Millisecond,
-			Flavor: flavor,
+			Size:           10,
+			TTL:            time.Millisecond,
+			EvictionPolicy: policy,
 		}
 		cache := New(config)
 
@@ -164,13 +164,13 @@ func TestLRUCacheClear(t *testing.T) {
 
 func TestLRUCacheSetAndGetWithProvidedLastUpdatedProperty(t *testing.T) {
 	assert := assert.New(t)
-	for _, flavor := range flavors {
+	for _, policy := range policies {
 		evictionChannel := make(chan EvictedEntry, 1)
 		config := Config{
 			Size:            10,
 			TTL:             time.Millisecond,
 			EvictionChannel: &evictionChannel,
-			Flavor:          flavor,
+			EvictionPolicy:  policy,
 		}
 		cache := New(config)
 
@@ -197,11 +197,11 @@ func TestLRUCacheSetAndGetWithProvidedLastUpdatedProperty(t *testing.T) {
 
 func TestLRUCacheGetState(t *testing.T) {
 	assert := assert.New(t)
-	for _, flavor := range flavors {
+	for _, policy := range policies {
 		config := Config{
-			Size:   3,
-			TTL:    time.Millisecond,
-			Flavor: flavor,
+			Size:           3,
+			TTL:            time.Millisecond,
+			EvictionPolicy: policy,
 		}
 		cache := New(config)
 
@@ -210,7 +210,7 @@ func TestLRUCacheGetState(t *testing.T) {
 
 		state := cache.GetState()
 
-		assert.Equal(flavor, state.Flavor)
+		assert.Equal(policy, state.EvictionPolicy)
 		assert.Equal(2, len(state.Entries))
 		assert.Equal(state.Entries[0].Key, entry2.Key)
 		assert.Equal(state.Entries[1].Key, entry1.Key)
@@ -220,8 +220,8 @@ func TestLRUCacheGetState(t *testing.T) {
 func TestLRUCacheSetStateError(t *testing.T) {
 	assert := assert.New(t)
 	state := State{
-		Flavor:      Write,
-		ExtractedAt: time.Now(),
+		EvictionPolicy: LRI,
+		ExtractedAt:    time.Now(),
 	}
 
 	config := Config{
@@ -236,10 +236,10 @@ func TestLRUCacheSetStateError(t *testing.T) {
 
 func TestLRUCacheSetState(t *testing.T) {
 	assert := assert.New(t)
-	for _, flavor := range flavors {
+	for _, policy := range policies {
 		state := State{
-			Flavor:      flavor,
-			ExtractedAt: time.Now(),
+			EvictionPolicy: policy,
+			ExtractedAt:    time.Now(),
 			Entries: []stateEntry{
 				stateEntry{
 					Key:           entry1.Key,
@@ -262,7 +262,7 @@ func TestLRUCacheSetState(t *testing.T) {
 			Size:            3,
 			TTL:             time.Millisecond,
 			EvictionChannel: &evictionChannel,
-			Flavor:          flavor,
+			EvictionPolicy:  policy,
 		}
 		cache := New(config)
 		cache.Set(entry4)
@@ -278,7 +278,7 @@ func TestLRUCacheSetState(t *testing.T) {
 		cachedEntry4 := cache.Get(entry4.Key)
 
 		assert.Equal(state.Entries[0].Value, cachedEntry1.Value)
-		assert.Equal(int64(2)-int64(flavor*flavor), cachedEntry1.Counter)
+		assert.Equal(int64(2)-int64(policy*policy), cachedEntry1.Counter)
 
 		assert.Equal(entry2.Key, evictedEntry2.Key)
 		assert.Equal(int64(2), evictedEntry2.Counter)
@@ -292,11 +292,11 @@ func TestLRUCacheSetState(t *testing.T) {
 func TestLRUCacheGetStateAndSetState(t *testing.T) {
 	assert := assert.New(t)
 
-	for _, flavor := range flavors {
+	for _, policy := range policies {
 		config := Config{
-			Size:   3,
-			TTL:    time.Millisecond,
-			Flavor: flavor,
+			Size:           3,
+			TTL:            time.Millisecond,
+			EvictionPolicy: policy,
 		}
 		cache := New(config)
 		cache.Set(entry4)
@@ -321,16 +321,16 @@ func TestLRUCacheGetStateAndSetState(t *testing.T) {
 	}
 }
 
-// Integration tests - Read flavor
+// Integration tests - LRA evictionPolicy
 // -----------------------------------------------------------------------------
-func TestLRUCacheSetWithEvictionReasonDroppedReadFlavor(t *testing.T) {
+func TestLRUCacheSetWithEvictionReasonDroppedLRA(t *testing.T) {
 	assert := assert.New(t)
 	evictionChannel := make(chan EvictedEntry, 1)
 	config := Config{
 		Size:            2,
 		TTL:             time.Millisecond,
 		EvictionChannel: &evictionChannel,
-		Flavor:          Read,
+		EvictionPolicy:  LRA,
 	}
 
 	cache := New(config)
@@ -376,13 +376,13 @@ func TestLRUCacheSetWithEvictionReasonDroppedReadFlavor(t *testing.T) {
 	assert.Equal(int64(3), cachedEntry3.Counter)
 }
 
-func TestLRUCacheSetWithEvictionReasonExpiredReadFlavor(t *testing.T) {
+func TestLRUCacheSetWithEvictionReasonExpiredLRA(t *testing.T) {
 	evictionChannel := make(chan EvictedEntry, 1)
 	config := Config{
 		Size:            10,
 		TTL:             time.Millisecond,
 		EvictionChannel: &evictionChannel,
-		Flavor:          Read,
+		EvictionPolicy:  LRA,
 	}
 
 	cache := New(config)
@@ -423,7 +423,7 @@ func TestLRUCacheSetWithEvictionReasonExpiredReadFlavor(t *testing.T) {
 	assert.Equal(entry4.Key, evictedEntry4.Key)
 }
 
-func TestLRUCacheKeysWithAllEvictionReasonsReadFlavor(t *testing.T) {
+func TestLRUCacheKeysWithAllEvictionReasonsLRA(t *testing.T) {
 	assert := assert.New(t)
 
 	evictionChannel := make(chan EvictedEntry, 1)
@@ -431,7 +431,7 @@ func TestLRUCacheKeysWithAllEvictionReasonsReadFlavor(t *testing.T) {
 		Size:            4,
 		TTL:             time.Millisecond,
 		EvictionChannel: &evictionChannel,
-		Flavor:          Read,
+		EvictionPolicy:  LRA,
 	}
 	cache := New(config)
 
@@ -467,7 +467,7 @@ func TestLRUCacheKeysWithAllEvictionReasonsReadFlavor(t *testing.T) {
 	assert.Contains(keys, entry3.Key)
 }
 
-func TestLRUCacheKeysWithAllExpiredReadFlavor(t *testing.T) {
+func TestLRUCacheKeysWithAllExpiredLRA(t *testing.T) {
 	assert := assert.New(t)
 
 	evictionChannel := make(chan EvictedEntry, 4)
@@ -475,7 +475,7 @@ func TestLRUCacheKeysWithAllExpiredReadFlavor(t *testing.T) {
 		Size:            10,
 		TTL:             time.Millisecond,
 		EvictionChannel: &evictionChannel,
-		Flavor:          Read,
+		EvictionPolicy:  LRA,
 	}
 	cache := New(config)
 
@@ -503,7 +503,7 @@ func TestLRUCacheKeysWithAllExpiredReadFlavor(t *testing.T) {
 	assert.Equal(int64(0), evictedEntry4.Counter)
 }
 
-func TestLRUCacheEntriesWithOneReplacedAndOneExpiredReadFlavor(t *testing.T) {
+func TestLRUCacheEntriesWithOneReplacedAndOneExpiredLRA(t *testing.T) {
 	assert := assert.New(t)
 
 	evictionChannel := make(chan EvictedEntry, 1)
@@ -511,7 +511,7 @@ func TestLRUCacheEntriesWithOneReplacedAndOneExpiredReadFlavor(t *testing.T) {
 		Size:            10,
 		TTL:             time.Millisecond,
 		EvictionChannel: &evictionChannel,
-		Flavor:          Read,
+		EvictionPolicy:  LRA,
 	}
 	cache := New(config)
 
@@ -549,7 +549,7 @@ func TestLRUCacheEntriesWithOneReplacedAndOneExpiredReadFlavor(t *testing.T) {
 	}
 }
 
-func TestLRUCacheEntriesWithAllExpiredReadFlavor(t *testing.T) {
+func TestLRUCacheEntriesWithAllExpiredLRA(t *testing.T) {
 	assert := assert.New(t)
 
 	evictionChannel := make(chan EvictedEntry, 4)
@@ -557,7 +557,7 @@ func TestLRUCacheEntriesWithAllExpiredReadFlavor(t *testing.T) {
 		Size:            10,
 		TTL:             time.Millisecond,
 		EvictionChannel: &evictionChannel,
-		Flavor:          Read,
+		EvictionPolicy:  LRA,
 	}
 	cache := New(config)
 
@@ -590,9 +590,9 @@ func TestLRUCacheEntriesWithAllExpiredReadFlavor(t *testing.T) {
 	assert.Equal(int64(0), evictedEntry4.Counter)
 }
 
-// Integration test - Write flavor
+// Integration test - LRI evictionPolicy
 // -----------------------------------------------------------------------------
-func TestLRUCacheSetWithEvictionReasonDroppedWriteFlavor(t *testing.T) {
+func TestLRUCacheSetWithEvictionReasonDroppedLRI(t *testing.T) {
 	assert := assert.New(t)
 
 	evictionChannel := make(chan EvictedEntry, 1)
@@ -600,7 +600,7 @@ func TestLRUCacheSetWithEvictionReasonDroppedWriteFlavor(t *testing.T) {
 		Size:            2,
 		TTL:             time.Millisecond,
 		EvictionChannel: &evictionChannel,
-		Flavor:          Write,
+		EvictionPolicy:  LRI,
 	}
 
 	cache := New(config)
@@ -636,13 +636,13 @@ func TestLRUCacheSetWithEvictionReasonDroppedWriteFlavor(t *testing.T) {
 	assert.Equal(int64(1), cachedEntry3.Counter)
 }
 
-func TestLRUCacheSetWithAllExpiredWriteFlavor(t *testing.T) {
+func TestLRUCacheSetWithAllExpiredLRI(t *testing.T) {
 	evictionChannel := make(chan EvictedEntry, 1)
 	config := Config{
 		Size:            10,
 		TTL:             time.Millisecond,
 		EvictionChannel: &evictionChannel,
-		Flavor:          Write,
+		EvictionPolicy:  LRI,
 	}
 
 	cache := New(config)
@@ -685,7 +685,7 @@ func TestLRUCacheSetWithAllExpiredWriteFlavor(t *testing.T) {
 	assert.Equal(entry4.Key, evictedEntry4.Key)
 }
 
-func TestLRUCacheKeysWithOneExpirationWriteFlavor(t *testing.T) {
+func TestLRUCacheKeysWithOneExpirationLRI(t *testing.T) {
 	assert := assert.New(t)
 
 	evictionChannel := make(chan EvictedEntry, 1)
@@ -693,7 +693,7 @@ func TestLRUCacheKeysWithOneExpirationWriteFlavor(t *testing.T) {
 		Size:            10,
 		TTL:             time.Millisecond,
 		EvictionChannel: &evictionChannel,
-		Flavor:          Write,
+		EvictionPolicy:  LRI,
 	}
 	cache := New(config)
 
@@ -718,7 +718,7 @@ func TestLRUCacheKeysWithOneExpirationWriteFlavor(t *testing.T) {
 	assert.Contains(keys, entry4.Key)
 }
 
-func TestLRUCacheKeysWithAllExpiredWriteFlavor(t *testing.T) {
+func TestLRUCacheKeysWithAllExpiredLRI(t *testing.T) {
 	assert := assert.New(t)
 
 	evictionChannel := make(chan EvictedEntry, 4)
@@ -726,7 +726,7 @@ func TestLRUCacheKeysWithAllExpiredWriteFlavor(t *testing.T) {
 		Size:            10,
 		TTL:             time.Millisecond,
 		EvictionChannel: &evictionChannel,
-		Flavor:          Write,
+		EvictionPolicy:  LRI,
 	}
 	cache := New(config)
 
@@ -758,7 +758,7 @@ func TestLRUCacheKeysWithAllExpiredWriteFlavor(t *testing.T) {
 	assert.Equal(int64(4), evictedEntry4.Counter)
 }
 
-func TestLRUCacheEntriesWithOneExpirationWriteFlavor(t *testing.T) {
+func TestLRUCacheEntriesWithOneExpirationLRI(t *testing.T) {
 	assert := assert.New(t)
 
 	evictionChannel := make(chan EvictedEntry, 1)
@@ -766,7 +766,7 @@ func TestLRUCacheEntriesWithOneExpirationWriteFlavor(t *testing.T) {
 		Size:            10,
 		TTL:             time.Millisecond,
 		EvictionChannel: &evictionChannel,
-		Flavor:          Write,
+		EvictionPolicy:  LRI,
 	}
 	cache := New(config)
 
@@ -800,7 +800,7 @@ func TestLRUCacheEntriesWithOneExpirationWriteFlavor(t *testing.T) {
 	}
 }
 
-func TestLRUCacheEntriesWithAllExpiredWriteFlavor(t *testing.T) {
+func TestLRUCacheEntriesWithAllExpiredLRI(t *testing.T) {
 	assert := assert.New(t)
 
 	evictionChannel := make(chan EvictedEntry, 4)
@@ -808,7 +808,7 @@ func TestLRUCacheEntriesWithAllExpiredWriteFlavor(t *testing.T) {
 		Size:            10,
 		TTL:             time.Millisecond,
 		EvictionChannel: &evictionChannel,
-		Flavor:          Write,
+		EvictionPolicy:  LRI,
 	}
 	cache := New(config)
 

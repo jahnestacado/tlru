@@ -20,7 +20,7 @@ type Config struct {
 	Size            int
 	TTL             time.Duration
 	EvictionChannel *chan EvictedEntry
-	Flavor          flavor
+	EvictionPolicy  evictionPolicy
 }
 
 type Entry struct {
@@ -56,9 +56,9 @@ type doublyLinkedNode struct {
 }
 
 type State struct {
-	Entries     []stateEntry
-	Flavor      flavor
-	ExtractedAt time.Time
+	Entries        []stateEntry
+	EvictionPolicy evictionPolicy
+	ExtractedAt    time.Time
 }
 
 type stateEntry struct {
@@ -99,8 +99,8 @@ func (d *doublyLinkedNode) ToStateEntry() stateEntry {
 }
 
 type evictionReason int
-type flavor int
+type evictionPolicy int
 
-func (f flavor) String() string {
-	return [...]string{"Read", "Write"}[f]
+func (f evictionPolicy) String() string {
+	return [...]string{"LRA", "LRI"}[f]
 }
