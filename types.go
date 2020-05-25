@@ -1,19 +1,70 @@
 // * tlru <https://github.com/jahnestacado/go-tlru>
 // * Copyright (c) 2020 Ioannis Tzanellis
 // * Licensed under the MIT License (MIT).
+
+// Package tlru (Time aware Least Recently Used) cache
 package tlru
 
 import "time"
 
 // TLRU cache public interface
 type TLRU interface {
+	// Get retrieves an entry from the cache by key
+	// Get behaves differently depending on the EvictionPolicy used
+	// * EvictionPolicy.LRA:
+	//		- If the key entry exists then the entry is marked as the most recently used entry
+	//		- If the key entry exists then the entrys Counter is incremented and the LastUpdatedAt property is updated
+	//		- If an entry for the specified key doesn't exist then it returns nil
+	//		- If an entry for the specified key exists but is expired it returns nil and an EvictedEntry will be emitted
+	// 			to the EvictionChannel(if present) with EvictionReasonExpired
+	//		 (if present) with EvictionReasonExpired
+	// * EvictionPolicy.LRI:
+	//		- If an entry for the specified key doesn't exist then it returns nil
+	//		- If an entry for the specified key exists but is expired it returns nil and an EvictedEntry will be emitted
+	// 			to the EvictionChannel(if present) with EvictionReasonExpired
 	Get(key string) *CacheEntry
+
+	// Set inserts/updates an entry in the cache
+	// Set behaves differently depending on the EvictionPolicy used
+	// * EvictionPolicy.LRA:
+	//		- If the key entry doesn't exist then it inserts it as the most recently used entry
+	//		- If the key entry already exists then it will replace the existing entry with the new one
+	//			as the most recently used entry and an EvictedEntry will be emitted to the EvictionChannel(if present)
+	//			with EvictionReasonReplaced. Replace means that the entry will be dropped and
+	//			re-inserted with a new CreatedAt/LastUpdatedAt timestamp and a resetted Counter
+	//		- If the cache is full (Config.Size) then the least recently accessed entry(the node before the tailNode)
+	//			will be dropped and an EvictedEntry will be emitted to the EvictionChannel(if present) with EvictionReasonDropped
+	// * EvictionPolicy.LRI:
+	//		- If the key entry doesn't exist then it inserts it as the most recently used entry
+	//		- If the key entry already exists then it will update the Value, Counter, LastUpdatedAt, CreatedAt properties of
+	//		  the existing entry and mark it as the most recently used entry
+	//		- If the cache is full (Config.Size) then the least recently inserted entry(the node before the tailNode)
+	//			will be dropped and an EvictedEntry will be emitted to the EvictionChannel(if present) with EvictionReasonDropped
 	Set(entry Entry)
+
+	// Delete removes the entry that corresponds to the provided key from the cache
+	// An EvictedEntry will be emitted to the EvictionChannel(if present) with EvictionReasonDeleted
 	Delete(key string)
+
+	// Keys returns an unordered slice of all available keys in the cache
+	// The order of keys is not guaranteed
+	// It will also evict expired entries based on the TTL of the cache
 	Keys() []string
+
+	// Entries returns an unordered slice of all available entries in the cache
+	// The order of entries is not guaranteed
+	// It will also evict expired entries based on the TTL of the cache
 	Entries() []CacheEntry
+
+	// Clear removes all entries from the cache
 	Clear()
+
+	// GetState returns the internal State of the cache
+	// This State can be put in persistent storage and rehydrated at a later point
+	// via the SetState method
 	GetState() State
+
+	// SetState sets the internal State of the cache
 	SetState(state State) error
 }
 
