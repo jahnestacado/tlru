@@ -1,4 +1,4 @@
-// * cable <https://github.com/jahnestacado/go-tlru>
+// * tlru <https://github.com/jahnestacado/go-tlru>
 // * Copyright (c) 2020 Ioannis Tzanellis
 // * Licensed under the MIT License (MIT).
 package tlru
@@ -162,7 +162,7 @@ func TestLRUCacheClear(t *testing.T) {
 	}
 }
 
-func TestLRUCacheSetAndGetWithProvidedLastUpdatedProperty(t *testing.T) {
+func TestLRUCacheSetAndGetWithProvidedTimestamp(t *testing.T) {
 	assert := assert.New(t)
 	for _, policy := range policies {
 		evictionChannel := make(chan EvictedEntry, 1)
