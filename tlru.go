@@ -17,46 +17,45 @@ type TLRU interface {
 	// Get behaves differently depending on the EvictionPolicy used
 	// * EvictionPolicy.LRA:
 	//		- If the key entry exists then the entry is marked as the
-	//			most recently used entry
+	//		  most recently used entry
 	//		- If the key entry exists then the entrys Counter is incremented and the
 	//		  LastUpdatedAt property is updated
 	//		- If an entry for the specified key doesn't exist then it returns nil
 	//		- If an entry for the specified key exists but is expired it returns nil
 	//		  and an EvictedEntry will be emitted	to the EvictionChannel(if present)
-	//			with EvictionReasonExpired
-	//		 (if present) with EvictionReasonExpired
+	//		  with EvictionReasonExpired
 	// * EvictionPolicy.LRI:
 	//		- If an entry for the specified key doesn't exist then it returns nil
 	//		- If an entry for the specified key exists but is expired it returns nil
-	//			and an EvictedEntry will be emitted to the EvictionChannel(if present)
-	//			with EvictionReasonExpired
+	//		  and an EvictedEntry will be emitted to the EvictionChannel(if present)
+	//		  with EvictionReasonExpired
 	Get(key string) *CacheEntry
 
 	// Set inserts/updates an entry in the cache
 	// Set behaves differently depending on the EvictionPolicy used
 	// * EvictionPolicy.LRA:
 	//		- If the key entry doesn't exist then it inserts it as the most
-	//			recently used entry
+	//		  recently used entry
 	//		- If the key entry already exists then it will replace the existing
-	//			entry with the new one as the most recently used entry.
-	//			An EvictedEntry will be emitted to the EvictionChannel(if present)
-	//			with EvictionReasonReplaced. Replace means that the entry will be
-	//			dropped and re-inserted with a new CreatedAt/LastUpdatedAt timestamp
-	//			and a resetted Counter
+	//		  entry with the new one as the most recently used entry.
+	//		  An EvictedEntry will be emitted to the EvictionChannel(if present)
+	//		  with EvictionReasonReplaced. Replace means that the entry will be
+	//		  dropped and re-inserted with a new CreatedAt/LastUpdatedAt timestamp
+	//		  and a resetted Counter
 	//		- If the cache is full (Config.Size) then the least recently accessed
-	//			entry(the node before the tailNode) will be dropped and an
-	//			EvictedEntry will be emitted to the EvictionChannel(if present)
-	//			with EvictionReasonDropped
+	//		  entry(the node before the tailNode) will be dropped and an
+	//		  EvictedEntry will be emitted to the EvictionChannel(if present)
+	//		  with EvictionReasonDropped
 	// * EvictionPolicy.LRI:
 	//		- If the key entry doesn't exist then it inserts it as the
-	//			most recently used entry
+	//		  most recently used entry
 	//		- If the key entry already exists then it will update
-	//			the Value, Counter, LastUpdatedAt, CreatedAt properties of
+	//		  the Value, Counter, LastUpdatedAt, CreatedAt properties of
 	//		  the existing entry and mark it as the most recently used entry
 	//		- If the cache is full (Config.Size) then
-	//			the least recently inserted entry(the node before the tailNode)
-	//			will be dropped and an EvictedEntry will be emitted to
-	//			the EvictionChannel(if present) with EvictionReasonDropped
+	//		  the least recently inserted entry(the node before the tailNode)
+	//		  will be dropped and an EvictedEntry will be emitted to
+	//		  the EvictionChannel(if present) with EvictionReasonDropped
 	Set(entry Entry)
 
 	// Delete removes the entry that corresponds to the provided key from cache
@@ -192,6 +191,7 @@ func New(config Config) TLRU {
 	}
 
 	cache.initializeDoublyLinkedList()
+	cache.startTTLEvictionDaemon()
 
 	return cache
 }
@@ -453,10 +453,20 @@ func (c *tlru) evictEntry(evictedNode *doublyLinkedNode, reason evictionReason) 
 func (c *tlru) evictExpiredEntries() {
 	previousNode := c.tailNode.Previous
 	for previousNode != nil && previousNode != c.headNode {
-		if c.config.TTL >= time.Since(previousNode.LastUpdatedAt) {
-			break
+		if c.config.TTL < time.Since(previousNode.LastUpdatedAt) {
+			c.evictEntry(previousNode, EvictionReasonExpired)
 		}
-		c.evictEntry(previousNode, EvictionReasonExpired)
 		previousNode = previousNode.Previous
 	}
+}
+
+func (c *tlru) startTTLEvictionDaemon() {
+	go func() {
+		for {
+			time.Sleep(c.config.TTL)
+			c.Lock()
+			c.evictExpiredEntries()
+			c.Unlock()
+		}
+	}()
 }
