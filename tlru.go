@@ -15,7 +15,7 @@ import (
 type TLRU interface {
 	// Get retrieves an entry from the cache by key
 	// Get behaves differently depending on the EvictionPolicy used
-	// * EvictionPolicy.LRA:
+	// * EvictionPolicy.LRA - (Least Recenty Accessed):
 	//		- If the key entry exists then the entry is marked as the
 	//		  most recently used entry
 	//		- If the key entry exists then the entrys Counter is incremented and the
@@ -24,7 +24,7 @@ type TLRU interface {
 	//		- If an entry for the specified key exists but is expired it returns nil
 	//		  and an EvictedEntry will be emitted	to the EvictionChannel(if present)
 	//		  with EvictionReasonExpired
-	// * EvictionPolicy.LRI:
+	// * EvictionPolicy.LRI - (Least Recenty Inserted):
 	//		- If an entry for the specified key doesn't exist then it returns nil
 	//		- If an entry for the specified key exists but is expired it returns nil
 	//		  and an EvictedEntry will be emitted to the EvictionChannel(if present)
@@ -33,7 +33,7 @@ type TLRU interface {
 
 	// Set inserts/updates an entry in the cache
 	// Set behaves differently depending on the EvictionPolicy used
-	// * EvictionPolicy.LRA:
+	// * EvictionPolicy.LRA - (Least Recenty Accessed):
 	//		- If the key entry doesn't exist then it inserts it as the most
 	//		  recently used entry
 	//		- If the key entry already exists then it will replace the existing
@@ -46,7 +46,7 @@ type TLRU interface {
 	//		  entry(the node before the tailNode) will be dropped and an
 	//		  EvictedEntry will be emitted to the EvictionChannel(if present)
 	//		  with EvictionReasonDropped
-	// * EvictionPolicy.LRI:
+	// * EvictionPolicy.LRI - (Least Recenty Inserted):
 	//		- If the key entry doesn't exist then it inserts it as the
 	//		  most recently used entry
 	//		- If the key entry already exists then it will update
