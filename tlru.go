@@ -145,9 +145,18 @@ type EvictedEntry struct {
 // State is the internal representation of the cache.
 // State can be retrieved/set via the GetState/SetState methods respectively
 type State struct {
-	Entries        []stateEntry
-	EvictionPolicy evictionPolicy
-	ExtractedAt    time.Time
+	Entries        []StateEntry   `json:"entries"`
+	EvictionPolicy evictionPolicy `json:"eviction_policy"`
+	ExtractedAt    time.Time      `json:"extracted_at"`
+}
+
+// StateEntry is a representation of a doublyLinkedNode without pointer references
+type StateEntry struct {
+	Key           string      `json:"key"`
+	Value         interface{} `json:"value"`
+	Counter       int64       `json:"counter"`
+	LastUpdatedAt time.Time   `json:"last_updated_at"`
+	CreatedAt     time.Time   `json:"created_at"`
 }
 
 const (
@@ -180,10 +189,10 @@ type tlru struct {
 
 // New returns a new instance of TLRU cache
 func New(config Config) TLRU {
-	headNode := &doublyLinkedNode{Key: "head_node"}
-	tailNode := &doublyLinkedNode{Key: "tail_node"}
-	headNode.Next = tailNode
-	tailNode.Previous = headNode
+	headNode := &doublyLinkedNode{key: "head_node"}
+	tailNode := &doublyLinkedNode{key: "tail_node"}
+	headNode.next = tailNode
+	tailNode.previous = headNode
 
 	cache := &tlru{
 		config: config,
@@ -205,13 +214,13 @@ func (c *tlru) Get(key string) *CacheEntry {
 		return nil
 	}
 
-	if c.config.TTL < time.Since(linkedNode.LastUpdatedAt) {
+	if c.config.TTL < time.Since(linkedNode.lastUpdatedAt) {
 		c.evictEntry(linkedNode, EvictionReasonExpired)
 		return nil
 	}
 
 	if c.config.EvictionPolicy == LRA {
-		c.setMRUNode(Entry{Key: key, Value: linkedNode.Value})
+		c.setMRUNode(Entry{Key: key, Value: linkedNode.value})
 	}
 
 	cacheEntry := linkedNode.ToCacheEntry()
@@ -229,7 +238,7 @@ func (c *tlru) Set(entry Entry) {
 	}
 
 	if !exists && len(c.cache) == c.config.Size {
-		c.evictEntry(c.tailNode.Previous, EvictionReasonDropped)
+		c.evictEntry(c.tailNode.previous, EvictionReasonDropped)
 	}
 
 	c.setMRUNode(entry)
@@ -284,14 +293,14 @@ func (c *tlru) GetState() State {
 
 	state := State{
 		EvictionPolicy: c.config.EvictionPolicy,
-		Entries:        make([]stateEntry, 0, len(c.cache)),
+		Entries:        make([]StateEntry, 0, len(c.cache)),
 		ExtractedAt:    time.Now().UTC(),
 	}
 
-	nextNode := c.headNode.Next
+	nextNode := c.headNode.next
 	for nextNode != nil && nextNode != c.tailNode {
 		state.Entries = append(state.Entries, nextNode.ToStateEntry())
-		nextNode = nextNode.Next
+		nextNode = nextNode.next
 	}
 
 	return state
@@ -307,71 +316,63 @@ func (c *tlru) SetState(state State) error {
 
 	previousNode := c.headNode
 	cache := make(map[string]*doublyLinkedNode, 0)
-	for _, stateEntry := range state.Entries {
+	for _, StateEntry := range state.Entries {
 		rehydratedNode := &doublyLinkedNode{
-			Key:           stateEntry.Key,
-			Value:         stateEntry.Value,
-			Counter:       stateEntry.Counter,
-			LastUpdatedAt: stateEntry.LastUpdatedAt,
-			CreatedAt:     stateEntry.CreatedAt,
+			key:           StateEntry.Key,
+			value:         StateEntry.Value,
+			counter:       StateEntry.Counter,
+			lastUpdatedAt: StateEntry.LastUpdatedAt,
+			createdAt:     StateEntry.CreatedAt,
 		}
-		previousNode.Next = rehydratedNode
-		rehydratedNode.Previous = previousNode
+		previousNode.next = rehydratedNode
+		rehydratedNode.previous = previousNode
 		previousNode = rehydratedNode
-		cache[rehydratedNode.Key] = rehydratedNode
+		cache[rehydratedNode.key] = rehydratedNode
 	}
-	previousNode.Next = c.tailNode
-	c.tailNode.Previous = previousNode
+	previousNode.next = c.tailNode
+	c.tailNode.previous = previousNode
 	c.cache = cache
 
 	return nil
 }
 
-type stateEntry struct {
-	Key           string      `json:"key"`
-	Value         interface{} `json:"value"`
-	Counter       int64       `json:"counter"`
-	LastUpdatedAt time.Time   `json:"last_updated_at"`
-	CreatedAt     time.Time   `json:"created_at"`
-}
-
 type doublyLinkedNode struct {
-	Key           string
-	Value         interface{}
-	Counter       int64
-	LastUpdatedAt time.Time
-	CreatedAt     time.Time
-	Previous      *doublyLinkedNode
-	Next          *doublyLinkedNode
+	key           string
+	value         interface{}
+	counter       int64
+	lastUpdatedAt time.Time
+	createdAt     time.Time
+	previous      *doublyLinkedNode
+	next          *doublyLinkedNode
 }
 
 func (d *doublyLinkedNode) ToCacheEntry() CacheEntry {
 	return CacheEntry{
-		Value:         d.Value,
-		Counter:       d.Counter,
-		LastUpdatedAt: d.LastUpdatedAt,
-		CreatedAt:     d.CreatedAt,
+		Value:         d.value,
+		Counter:       d.counter,
+		LastUpdatedAt: d.lastUpdatedAt,
+		CreatedAt:     d.createdAt,
 	}
 }
 func (d *doublyLinkedNode) ToEvictedEntry(reason evictionReason) EvictedEntry {
 	return EvictedEntry{
-		Key:           d.Key,
-		Value:         d.Value,
-		Counter:       d.Counter,
-		LastUpdatedAt: d.LastUpdatedAt,
-		CreatedAt:     d.CreatedAt,
+		Key:           d.key,
+		Value:         d.value,
+		Counter:       d.counter,
+		LastUpdatedAt: d.lastUpdatedAt,
+		CreatedAt:     d.createdAt,
 		EvictedAt:     time.Now().UTC(),
 		Reason:        reason,
 	}
 }
 
-func (d *doublyLinkedNode) ToStateEntry() stateEntry {
-	return stateEntry{
-		Key:           d.Key,
-		Value:         d.Value,
-		Counter:       d.Counter,
-		LastUpdatedAt: d.LastUpdatedAt,
-		CreatedAt:     d.CreatedAt,
+func (d *doublyLinkedNode) ToStateEntry() StateEntry {
+	return StateEntry{
+		Key:           d.key,
+		Value:         d.value,
+		Counter:       d.counter,
+		LastUpdatedAt: d.lastUpdatedAt,
+		CreatedAt:     d.createdAt,
 	}
 }
 
@@ -391,10 +392,10 @@ func (c *tlru) clear() {
 }
 
 func (c *tlru) initializeDoublyLinkedList() {
-	headNode := &doublyLinkedNode{Key: "head_node"}
-	tailNode := &doublyLinkedNode{Key: "tail_node"}
-	headNode.Next = tailNode
-	tailNode.Previous = headNode
+	headNode := &doublyLinkedNode{key: "head_node"}
+	tailNode := &doublyLinkedNode{key: "tail_node"}
+	headNode.next = tailNode
+	tailNode.previous = headNode
 	c.headNode = headNode
 	c.tailNode = tailNode
 }
@@ -411,39 +412,39 @@ func (c *tlru) setMRUNode(entry Entry) {
 	}
 	linkedNode, exists := c.cache[entry.Key]
 	if exists {
-		if c.config.TTL >= time.Since(linkedNode.LastUpdatedAt) {
-			linkedNode.Counter++
+		if c.config.TTL >= time.Since(linkedNode.lastUpdatedAt) {
+			linkedNode.counter++
 		}
-		linkedNode.LastUpdatedAt = lastUpdatedAt
+		linkedNode.lastUpdatedAt = lastUpdatedAt
 
 		// Re-wire siblings of linkedNode
-		linkedNode.Next.Previous = linkedNode.Previous
-		linkedNode.Previous.Next = linkedNode.Next
+		linkedNode.next.previous = linkedNode.previous
+		linkedNode.previous.next = linkedNode.next
 	} else {
 		linkedNode = &doublyLinkedNode{
-			Key:           entry.Key,
-			Value:         entry.Value,
-			Counter:       counter,
-			LastUpdatedAt: lastUpdatedAt,
-			Previous:      c.headNode,
-			Next:          c.headNode.Next,
-			CreatedAt:     time.Now().UTC(),
+			key:           entry.Key,
+			value:         entry.Value,
+			counter:       counter,
+			lastUpdatedAt: lastUpdatedAt,
+			previous:      c.headNode,
+			next:          c.headNode.next,
+			createdAt:     time.Now().UTC(),
 		}
 
 		c.cache[entry.Key] = linkedNode
 	}
 
 	// Re-wire headNode
-	linkedNode.Previous = c.headNode
-	linkedNode.Next = c.headNode.Next
-	c.headNode.Next.Previous = linkedNode
-	c.headNode.Next = linkedNode
+	linkedNode.previous = c.headNode
+	linkedNode.next = c.headNode.next
+	c.headNode.next.previous = linkedNode
+	c.headNode.next = linkedNode
 }
 
 func (c *tlru) evictEntry(evictedNode *doublyLinkedNode, reason evictionReason) {
-	evictedNode.Previous.Next = evictedNode.Next
-	evictedNode.Next.Previous = evictedNode.Previous
-	delete(c.cache, evictedNode.Key)
+	evictedNode.previous.next = evictedNode.next
+	evictedNode.next.previous = evictedNode.previous
+	delete(c.cache, evictedNode.key)
 
 	if c.config.EvictionChannel != nil {
 		*c.config.EvictionChannel <- evictedNode.ToEvictedEntry(reason)
@@ -451,12 +452,12 @@ func (c *tlru) evictEntry(evictedNode *doublyLinkedNode, reason evictionReason) 
 }
 
 func (c *tlru) evictExpiredEntries() {
-	previousNode := c.tailNode.Previous
+	previousNode := c.tailNode.previous
 	for previousNode != nil && previousNode != c.headNode {
-		if c.config.TTL < time.Since(previousNode.LastUpdatedAt) {
+		if c.config.TTL < time.Since(previousNode.lastUpdatedAt) {
 			c.evictEntry(previousNode, EvictionReasonExpired)
 		}
-		previousNode = previousNode.Previous
+		previousNode = previousNode.previous
 	}
 }
 

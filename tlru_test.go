@@ -290,7 +290,7 @@ func TestLRUCacheSetState(t *testing.T) {
 		state := State{
 			EvictionPolicy: policy,
 			ExtractedAt:    time.Now(),
-			Entries: []stateEntry{
+			Entries: []StateEntry{
 				{
 					Key:           entry1.Key,
 					Value:         entry1.Value,
