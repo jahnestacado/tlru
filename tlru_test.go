@@ -46,7 +46,7 @@ func TestLRUCacheDelete(t *testing.T) {
 	for _, policy := range policies {
 		config := Config{
 			Size:           10,
-			TTL:            time.Millisecond,
+			TTL:            time.Minute,
 			EvictionPolicy: policy,
 		}
 		cache := New(config)
@@ -78,7 +78,7 @@ func TestLRUCacheKeys(t *testing.T) {
 	for _, policy := range policies {
 		config := Config{
 			Size:           10,
-			TTL:            time.Millisecond,
+			TTL:            time.Minute,
 			EvictionPolicy: policy,
 		}
 		cache := New(config)
@@ -103,7 +103,7 @@ func TestLRUCacheEntries(t *testing.T) {
 	for _, policy := range policies {
 		config := Config{
 			Size:           10,
-			TTL:            time.Millisecond,
+			TTL:            time.Minute,
 			EvictionPolicy: policy,
 		}
 		cache := New(config)
@@ -133,7 +133,7 @@ func TestLRUCacheClear(t *testing.T) {
 	for _, policy := range policies {
 		config := Config{
 			Size:           10,
-			TTL:            time.Millisecond,
+			TTL:            time.Minute,
 			EvictionPolicy: policy,
 		}
 		cache := New(config)
@@ -254,7 +254,7 @@ func TestLRUCacheGetState(t *testing.T) {
 	for _, policy := range policies {
 		config := Config{
 			Size:           3,
-			TTL:            time.Millisecond,
+			TTL:            time.Minute,
 			EvictionPolicy: policy,
 		}
 		cache := New(config)
@@ -280,7 +280,7 @@ func TestLRUCacheSetStateError(t *testing.T) {
 
 	config := Config{
 		Size: 1,
-		TTL:  time.Millisecond,
+		TTL:  time.Minute,
 	}
 	cache := New(config)
 
@@ -314,7 +314,7 @@ func TestLRUCacheSetState(t *testing.T) {
 		evictionChannel := make(chan EvictedEntry, 1)
 		config := Config{
 			Size:            3,
-			TTL:             time.Millisecond,
+			TTL:             time.Minute,
 			EvictionChannel: &evictionChannel,
 			EvictionPolicy:  policy,
 		}
@@ -349,7 +349,7 @@ func TestLRUCacheGetStateAndSetState(t *testing.T) {
 	for _, policy := range policies {
 		config := Config{
 			Size:           3,
-			TTL:            time.Millisecond,
+			TTL:            time.Minute,
 			EvictionPolicy: policy,
 		}
 		cache := New(config)
@@ -382,7 +382,7 @@ func TestLRUCacheSetWithEvictionReasonDroppedLRA(t *testing.T) {
 	evictionChannel := make(chan EvictedEntry, 1)
 	config := Config{
 		Size:            2,
-		TTL:             time.Millisecond,
+		TTL:             time.Minute,
 		EvictionChannel: &evictionChannel,
 		EvictionPolicy:  LRA,
 	}
@@ -435,7 +435,7 @@ func TestLRUCacheSetWithEvictionReasonExpiredLRA(t *testing.T) {
 	evictionChannel := make(chan EvictedEntry, 0)
 	config := Config{
 		Size:            10,
-		TTL:             time.Millisecond,
+		TTL:             time.Nanosecond,
 		EvictionChannel: &evictionChannel,
 		EvictionPolicy:  LRA,
 	}
@@ -493,7 +493,7 @@ func TestLRUCacheSetWithEvictionReasonExpiredLRA(t *testing.T) {
 func TestLRUCacheKeysWithAllEvictionReasonsLRA(t *testing.T) {
 	assert := assert.New(t)
 
-	evictionChannel := make(chan EvictedEntry, 1)
+	evictionChannel := make(chan EvictedEntry, 2)
 	config := Config{
 		Size:            4,
 		TTL:             time.Millisecond,
@@ -605,10 +605,17 @@ func TestLRUCacheEntriesWithOneReplacedAndOneExpiredLRA(t *testing.T) {
 		EvictionPolicy:  LRA,
 	}
 	cache := New(config)
+	var evictedEntry1 EvictedEntry
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		evictedEntry1 = <-evictionChannel
+	}()
 
 	cache.Set(entry1)
-	time.Sleep(2 * time.Millisecond)
-	evictedEntry1 := <-evictionChannel
+	wg.Wait()
 	cache.Set(entry2)
 	cache.Set(entry4)
 	cache.Set(entry3)
@@ -644,7 +651,7 @@ func TestLRUCacheEntriesWithAllExpiredLRA(t *testing.T) {
 	evictionChannel := make(chan EvictedEntry, 0)
 	config := Config{
 		Size:            10,
-		TTL:             time.Millisecond,
+		TTL:             time.Nanosecond,
 		EvictionChannel: &evictionChannel,
 		EvictionPolicy:  LRA,
 	}
@@ -700,7 +707,7 @@ func TestLRUCacheSetWithEvictionReasonDroppedLRI(t *testing.T) {
 	evictionChannel := make(chan EvictedEntry, 1)
 	config := Config{
 		Size:            2,
-		TTL:             time.Millisecond,
+		TTL:             time.Minute,
 		EvictionChannel: &evictionChannel,
 		EvictionPolicy:  LRI,
 	}
@@ -813,7 +820,7 @@ func TestLRUCacheKeysWithOneExpirationLRI(t *testing.T) {
 	cache := New(config)
 
 	cache.Set(entry1)
-	time.Sleep(time.Millisecond)
+	time.Sleep(2 * config.TTL)
 	evictedEntry1 := <-evictionChannel
 	cache.Set(entry2)
 	cache.Set(entry2)
@@ -897,10 +904,17 @@ func TestLRUCacheEntriesWithOneExpirationLRI(t *testing.T) {
 	}
 	cache := New(config)
 
+	var evictedEntry1 EvictedEntry
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		evictedEntry1 = <-evictionChannel
+	}()
+
 	cache.Set(entry1)
 	cache.Set(entry1)
-	time.Sleep(2 * time.Millisecond)
-	evictedEntry1 := <-evictionChannel
+	wg.Wait()
 	cache.Set(entry2)
 	cache.Set(entry2)
 	cache.Set(entry4)
@@ -933,7 +947,7 @@ func TestLRUCacheEntriesWithAllExpiredLRI(t *testing.T) {
 	evictionChannel := make(chan EvictedEntry, 0)
 	config := Config{
 		Size:            10,
-		TTL:             time.Millisecond,
+		TTL:             2 * time.Millisecond,
 		EvictionChannel: &evictionChannel,
 		EvictionPolicy:  LRI,
 	}
