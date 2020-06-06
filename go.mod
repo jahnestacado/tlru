@@ -1,4 +1,4 @@
-module tlru
+module github.com/jahnestacado/tlru
 
 go 1.13
 

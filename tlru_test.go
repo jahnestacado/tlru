@@ -1,4 +1,4 @@
-// * tlru <https://github.com/jahnestacado/go-tlru>
+// * tlru <https://github.com/jahnestacado/tlru>
 // * Copyright (c) 2020 Ioannis Tzanellis
 // * Licensed under the MIT License (MIT).
 package tlru
@@ -26,7 +26,7 @@ func TestLRUCacheSetAndGet(t *testing.T) {
 	for _, policy := range policies {
 		config := Config{
 			Size:           1,
-			TTL:            time.Millisecond,
+			TTL:            time.Minute,
 			EvictionPolicy: policy,
 		}
 		cache := New(config)
@@ -169,7 +169,7 @@ func TestLRUCacheTTLEvictionDaemon(t *testing.T) {
 		evictionChannel := make(chan EvictedEntry, 0)
 		config := Config{
 			Size:            10,
-			TTL:             time.Millisecond,
+			TTL:             5 * time.Millisecond,
 			EvictionChannel: &evictionChannel,
 			EvictionPolicy:  policy,
 		}
@@ -220,7 +220,7 @@ func TestLRUCacheSetAndGetWithProvidedTimestamp(t *testing.T) {
 		evictionChannel := make(chan EvictedEntry, 1)
 		config := Config{
 			Size:            10,
-			TTL:             time.Millisecond,
+			TTL:             time.Minute,
 			EvictionChannel: &evictionChannel,
 			EvictionPolicy:  policy,
 		}
@@ -296,18 +296,18 @@ func TestLRUCacheSetState(t *testing.T) {
 			ExtractedAt:    time.Now(),
 			Entries: []StateEntry{
 				{
-					Key:           entry1.Key,
-					Value:         entry1.Value,
-					Counter:       1,
-					LastUpdatedAt: time.Now(),
-					CreatedAt:     time.Now(),
+					Key:        entry1.Key,
+					Value:      entry1.Value,
+					Counter:    1,
+					LastUsedAt: time.Now(),
+					CreatedAt:  time.Now(),
 				},
 				{
-					Key:           entry2.Key,
-					Value:         entry2.Value,
-					Counter:       2,
-					LastUpdatedAt: time.Date(1900, 2, 1, 12, 30, 0, 0, time.UTC),
-					CreatedAt:     time.Date(1900, 2, 1, 12, 30, 0, 0, time.UTC),
+					Key:        entry2.Key,
+					Value:      entry2.Value,
+					Counter:    2,
+					LastUsedAt: time.Date(1900, 2, 1, 12, 30, 0, 0, time.UTC),
+					CreatedAt:  time.Date(1900, 2, 1, 12, 30, 0, 0, time.UTC),
 				},
 			},
 		}
@@ -324,7 +324,6 @@ func TestLRUCacheSetState(t *testing.T) {
 
 		err := cache.SetState(state)
 		assert.NoError(err)
-
 		cachedEntry1 := cache.Get(state.Entries[0].Key)
 		cachedEntry2 := cache.Get(state.Entries[1].Key)
 		evictedEntry2 := <-evictionChannel
@@ -377,7 +376,7 @@ func TestLRUCacheGetStateAndSetState(t *testing.T) {
 
 // Integration tests - LRA evictionPolicy
 // -----------------------------------------------------------------------------
-func TestLRUCacheSetWithEvictionReasonDroppedLRA(t *testing.T) {
+func TestLRUCacheSetWithDuplicateKeyErrorLRA(t *testing.T) {
 	assert := assert.New(t)
 	evictionChannel := make(chan EvictedEntry, 1)
 	config := Config{
@@ -388,46 +387,18 @@ func TestLRUCacheSetWithEvictionReasonDroppedLRA(t *testing.T) {
 	}
 
 	cache := New(config)
-	cache.Set(entry1)
-	cache.Set(entry2)
-	cache.Set(entry2)
-	evictedEntry2First := <-evictionChannel
-	cache.Set(entry4)
-	evictedEntry1 := <-evictionChannel
-	cache.Set(entry2)
-	evictedEntry2Second := <-evictionChannel
-	cache.Set(entry3)
-	evictedEntry4 := <-evictionChannel
+	err := cache.Set(entry1)
+	assert.NoError(err)
+	err = cache.Set(entry2)
+	assert.NoError(err)
+	err = cache.Set(entry2)
+	assert.Error(err)
 
 	cachedEntry1 := cache.Get(entry1.Key)
-	cache.Get(entry2.Key)
 	cachedEntry2 := cache.Get(entry2.Key)
-	cache.Get(entry3.Key)
-	cache.Get(entry3.Key)
-	cachedEntry3 := cache.Get(entry3.Key)
-	cachedEntry4 := cache.Get(entry4.Key)
 
-	assert.Nil(cachedEntry1)
-	assert.Nil(cachedEntry4)
-	assert.Equal(entry1.Key, evictedEntry1.Key)
-	assert.Equal(entry4.Key, evictedEntry4.Key)
-	assert.Equal(entry2.Key, evictedEntry2First.Key)
-	assert.Equal(entry2.Key, evictedEntry2Second.Key)
-
-	assert.Equal(int64(0), evictedEntry1.Counter)
-	assert.Equal(int64(0), evictedEntry4.Counter)
-	assert.Equal(int64(0), evictedEntry2First.Counter)
-	assert.Equal(int64(0), evictedEntry2Second.Counter)
-
-	assert.Equal(EvictionReasonReplaced, evictedEntry2First.Reason)
-	assert.Equal(EvictionReasonDropped, evictedEntry1.Reason)
-	assert.Equal(EvictionReasonReplaced, evictedEntry2Second.Reason)
-	assert.Equal(EvictionReasonDropped, evictedEntry4.Reason)
-
+	assert.Equal(entry1.Value, cachedEntry1.Value)
 	assert.Equal(entry2.Value, cachedEntry2.Value)
-	assert.Equal(int64(2), cachedEntry2.Counter)
-	assert.Equal(entry3.Value, cachedEntry3.Value)
-	assert.Equal(int64(3), cachedEntry3.Counter)
 }
 
 func TestLRUCacheSetWithEvictionReasonExpiredLRA(t *testing.T) {
@@ -495,8 +466,8 @@ func TestLRUCacheKeysWithAllEvictionReasonsLRA(t *testing.T) {
 
 	evictionChannel := make(chan EvictedEntry, 2)
 	config := Config{
-		Size:            4,
-		TTL:             time.Millisecond,
+		Size:            2,
+		TTL:             5 * time.Millisecond,
 		EvictionChannel: &evictionChannel,
 		EvictionPolicy:  LRA,
 	}
@@ -518,11 +489,10 @@ func TestLRUCacheKeysWithAllEvictionReasonsLRA(t *testing.T) {
 	cache.Set(entry1)
 	wg.Wait()
 	cache.Set(entry2)
-	cache.Set(entry2)
-	evictedEntry2 = <-evictionChannel
-	cache.Set(entry4)
-	cache.Get(entry4.Key)
 	cache.Set(entry3)
+	cache.Set(entry4)
+	evictedEntry2 = <-evictionChannel
+	cache.Get(entry4.Key)
 	cache.Delete(entry4.Key)
 	evictedEntry4 = <-evictionChannel
 
@@ -531,7 +501,7 @@ func TestLRUCacheKeysWithAllEvictionReasonsLRA(t *testing.T) {
 	assert.Equal(entry4.Key, evictedEntry4.Key)
 
 	assert.Equal(EvictionReasonExpired, evictedEntry1.Reason)
-	assert.Equal(EvictionReasonReplaced, evictedEntry2.Reason)
+	assert.Equal(EvictionReasonDropped, evictedEntry2.Reason)
 	assert.Equal(EvictionReasonDeleted, evictedEntry4.Reason)
 
 	assert.Equal(int64(0), evictedEntry1.Counter)
@@ -539,9 +509,8 @@ func TestLRUCacheKeysWithAllEvictionReasonsLRA(t *testing.T) {
 	assert.Equal(int64(1), evictedEntry4.Counter)
 
 	keys := cache.Keys()
-	assert.Equal(2, len(keys))
-	assert.NotContains(keys, entry1.Key)
-	assert.Contains(keys, entry2.Key)
+	assert.Equal(1, len(keys))
+	assert.NotContains(keys, entry1.Key, entry2.Key, entry4.Key)
 	assert.Contains(keys, entry3.Key)
 }
 
@@ -592,57 +561,6 @@ func TestLRUCacheKeysWithAllExpiredLRA(t *testing.T) {
 
 	keys := cache.Keys()
 	assert.Equal(0, len(keys))
-}
-
-func TestLRUCacheEntriesWithOneReplacedAndOneExpiredLRA(t *testing.T) {
-	assert := assert.New(t)
-
-	evictionChannel := make(chan EvictedEntry, 1)
-	config := Config{
-		Size:            10,
-		TTL:             time.Millisecond,
-		EvictionChannel: &evictionChannel,
-		EvictionPolicy:  LRA,
-	}
-	cache := New(config)
-	var evictedEntry1 EvictedEntry
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		evictedEntry1 = <-evictionChannel
-	}()
-
-	cache.Set(entry1)
-	wg.Wait()
-	cache.Set(entry2)
-	cache.Set(entry4)
-	cache.Set(entry3)
-	cache.Set(entry4)
-	evictedEntry4 := <-evictionChannel
-
-	assert.Equal(entry1.Value, evictedEntry1.Value)
-	assert.Equal(entry4.Value, evictedEntry4.Value)
-
-	assert.Equal(EvictionReasonExpired, evictedEntry1.Reason)
-	assert.Equal(EvictionReasonReplaced, evictedEntry4.Reason)
-
-	assert.Equal(int64(0), evictedEntry1.Counter)
-	assert.Equal(int64(0), evictedEntry4.Counter)
-
-	cachedEntries := cache.Entries()
-	assert.NotContains(cachedEntries, entry1.Value)
-	assert.Equal(3, len(cachedEntries))
-	entries := map[interface{}]Entry{
-		entry2.Value: entry2,
-		entry3.Value: entry3,
-		entry4.Value: entry4,
-	}
-	for _, cachedEntry := range cachedEntries {
-		assert.Equal(entries[cachedEntry.Value].Value, cachedEntry.Value)
-		assert.Equal(int64(0), cachedEntry.Counter)
-	}
 }
 
 func TestLRUCacheEntriesWithAllExpiredLRA(t *testing.T) {
