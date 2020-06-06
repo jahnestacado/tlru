@@ -15,9 +15,9 @@
 
 # TLRU
 
-## A Time-aware Least Recently Used cache implementation with configurable eviction policy
+### A Time-aware Least Recently Used cache implementation with configurable eviction policy
 
-# Features
+## Features
 
 - Thread safe
 - Entry expiration based on TTL (Time to live)
@@ -26,9 +26,14 @@
 - Communication of evicted entries via EvictionChannel
 - Cache state extraction/ state re-hydration
 
-# Eviction Policies
 
-## LRA (Least Recently Accessed) eviction policy
+## API
+[Check GoDocs](https://godoc.org/github.com/jahnestacado/tlru)
+
+
+## Eviction Policies
+
+### LRA (Least Recently Accessed) eviction policy
 
 When an entry from the cache is accessed via the `Get` method it is marked as the most recently used entry. This will cause the entrys lifetime in the cache to be prolonged. LRA is the default eviction policy.
 
@@ -43,7 +48,7 @@ When an entry from the cache is accessed via the `Get` method it is marked as th
   - If the key entry already exists then it will return an error
   - If the cache is full (Config.Size) then the least recently accessed entry(the node before the tailNode) will be dropped and an EvictedEntry will be emitted to the EvictionChannel(if present) with EvictionReasonDropped
 
-### Example
+#### Example
 
 ```go
 package main
@@ -118,7 +123,7 @@ func main() {
 
 ```
 
-## LRI (Least Recently Inserted) eviction policy
+### LRI (Least Recently Inserted) eviction policy
 
 When an entry is inserted via the `Set` method in the cache, it will be marked as the most recently used entry. This will cause the entrys lifetime in the cache to be prolonged. In contrast to LRA, this eviction policy allows
 multiple insertion of entries with the same key.
@@ -134,7 +139,7 @@ multiple insertion of entries with the same key.
   - If the cache is full (Config.Size) then the least recently inserted entry(the node before the tailNode)
     will be dropped and an EvictedEntry will be emitted to the EvictionChannel(if present) with EvictionReasonDropped
 
-### Example
+#### Example
 
 ```go
 package main
@@ -202,7 +207,7 @@ func main() {
 
 ```
 
-## Entry timestamp
+### Entry timestamp
  Upon entry insertion(`Set`) TLRU provides also the option of defining an `Entry.Timestamp`.
 
  If the `Timestamp` property is provided TTL will be checked against that timestamp(until the entry is marked as the most recently used entry again, which will update internally the `LastUsedAt` property).
@@ -227,7 +232,7 @@ cache.Set(entry2)
 
 ```
 
-## Extract/Rehydrate cache state
+### Extract/Rehydrate cache state
 TLRU provides two methods which allows cache state extraction and state rehydration
 
 ```go
@@ -250,13 +255,13 @@ err := cache.SetState(state)
 
 ```
 
-## Run Tests
+### Run Tests
 
 ```sh
 go test -v
 ```
 
-## Benchmarks
+### Benchmarks
 
 ```sh
 go test -bench=.
@@ -302,7 +307,7 @@ BenchmarkEntries_FullCache_1000000_LRA-8                                        
 BenchmarkEntries_FullCache_1000000_LRI-8                                               6         199355334 ns/op
 ```
 
-## License
+### License
 
 Copyright (c) 2020 Ioannis Tzanellis  
 [Released under the MIT license](https://github.com/jahnestacado/tlru/blob/master/LICENSE)
