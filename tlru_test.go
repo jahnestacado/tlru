@@ -374,6 +374,14 @@ func TestLRUCacheGetStateAndSetState(t *testing.T) {
 	}
 }
 
+func TestEvictionReasonsToString(t *testing.T) {
+	assert := assert.New(t)
+
+	assert.Equal("Dropped", EvictionReasonDropped.String())
+	assert.Equal("Expired", EvictionReasonExpired.String())
+	assert.Equal("Deleted", EvictionReasonDeleted.String())
+}
+
 // Integration tests - LRA evictionPolicy
 // -----------------------------------------------------------------------------
 func TestLRUCacheSetWithDuplicateKeyErrorLRA(t *testing.T) {
