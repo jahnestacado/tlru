@@ -312,3 +312,5 @@ BenchmarkEntries_FullCache_1000000_LRI-8                                        
 
 Copyright (c) 2020 Ioannis Tzanellis  
 [Released under the MIT license](https://github.com/jahnestacado/tlru/blob/master/LICENSE)
+
+_Credits to [Ashley McNamara](https://github.com/ashleymcnamara) for the [gopher artwork](https://github.com/ashleymcnamara/gophers)_
