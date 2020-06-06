@@ -10,7 +10,7 @@
     <a href="https://codecov.io/gh/jahnestacado/tlru">
   <img src="https://codecov.io/gh/jahnestacado/tlru/branch/master/graph/badge.svg" />
 </a>
-  <img width="400px" height="423px" src="https://github.com/jahnestacado/tlru/blob/master/resources/gopher.png?raw=true" /img>
+  <img width="450px" height="476px" src="https://github.com/jahnestacado/tlru/blob/master/resources/gopher.png?raw=true" /img>
   </p>
 </p>
 
