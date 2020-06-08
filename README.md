@@ -10,13 +10,15 @@
     <a href="https://codecov.io/gh/jahnestacado/tlru">
   <img src="https://codecov.io/gh/jahnestacado/tlru/branch/master/graph/badge.svg" />
 </a>
-  <img width="450px" height="476px" src="https://github.com/jahnestacado/tlru/blob/master/resources/gopher.png?raw=true" /img>
+  </p>
+  <p align="center">
+    <img width="48.6%" height="51.4%"  src="https://github.com/jahnestacado/tlru/blob/master/resources/gopher.png?raw=true" /img>
   </p>
 </p>
 
 # TLRU
 
-### A Time-aware Least Recently Used cache implementation with configurable eviction policy
+### A Time-aware Least Recently Used cache implementation in Go with configurable eviction policy
 
 ## Features
 
@@ -29,7 +31,7 @@
 
 
 ## API
-[Check GoDocs](https://godoc.org/github.com/jahnestacado/tlru)
+[Check GoDocs](https://godoc.org/github.com/jahnestacado/tlru#TLRU)
 
 
 ## Eviction Policies
