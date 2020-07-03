@@ -29,10 +29,9 @@
 - Communication of evicted entries via EvictionChannel
 - Cache state extraction/ state re-hydration
 
-
 ## API
-[Check GoDocs](https://godoc.org/github.com/jahnestacado/tlru#TLRU)
 
+[Check GoDocs](https://godoc.org/github.com/jahnestacado/tlru#TLRU)
 
 ## Eviction Policies
 
@@ -44,7 +43,6 @@ When an entry from the cache is accessed via the `Get` method it is marked as th
   - If the key entry exists then the entry is marked as the most recently used entry
   - If the key entry exists then the entrys Counter is incremented and the LastUsedAt property is updated
   - If an entry for the specified key doesn't exist then it returns nil
-
 
 * Behavior upon `Set`
   - If the key entry doesn't exist then it inserts it as the most recently used entry with Counter = 0
@@ -84,8 +82,7 @@ func main() {
 	cache := tlru.New(config)
 
 	go func() {
-		for {
-			evictedEntry := <-evictionChannel
+		for evictedEntry := range evictionChannel {
 			fmt.Printf("Entry with key: '%s' has been evicted with reason: %s\n", evictedEntry.Key, evictedEntry.Reason.String())
 			// Entry with key: 'entry-1' has been evicted with reason: Expired
 			// Entry with key: 'entry-2' has been evicted with reason: Dropped
@@ -134,7 +131,6 @@ multiple insertion of entries with the same key.
 - Behavior upon `Get`
   - If an entry for the specified key doesn't exist then it returns nil
 
-
 * Behavior upon `Set`
   - If the key entry doesn't exist then it inserts it as the most recently used entry with Counter = 1
   - If the key entry already exists then it will update the Value, Counter and LastUsedAt properties of
@@ -175,8 +171,7 @@ func main() {
 	cache := tlru.New(config)
 
 	go func() {
-		for {
-			evictedEntry := <-evictionChannel
+		for evictedEntry := range evictionChannel {
 			fmt.Printf("Entry with key: '%s' has been evicted with reason: %s\n", evictedEntry.Key, evictedEntry.Reason.String())
 			// Entry with key: 'entry-1' has been evicted with reason: Expired
 			// Entry with key: 'entry-3' has been evicted with reason: Dropped
@@ -211,12 +206,13 @@ func main() {
 ```
 
 ### Entry timestamp
- Upon entry insertion(`Set`) TLRU provides also the option of defining an `Entry.Timestamp`.
 
- If the `Timestamp` property is provided TTL will be checked against that timestamp(until the entry is marked as the most recently used entry again, which will update internally the `LastUsedAt` property).
+Upon entry insertion(`Set`) TLRU provides also the option of defining an `Entry.Timestamp`.
+
+If the `Timestamp` property is provided TTL will be checked against that timestamp(until the entry is marked as the most recently used entry again, which will update internally the `LastUsedAt` property).
 
 This is more relevant for the LRI eviction policy which allows multiple insertions of an entry with the same key. A common use case for custom timestamps is
- the use of ingestion timestamps
+the use of ingestion timestamps
 
 ```go
 config := tlru.Config{
@@ -236,6 +232,7 @@ cache.Set(entry2)
 ```
 
 ### Extract/Rehydrate cache state
+
 TLRU provides two methods which allows cache state extraction and state rehydration
 
 ```go
