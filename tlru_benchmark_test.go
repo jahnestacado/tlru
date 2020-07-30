@@ -177,6 +177,24 @@ func BenchmarkGet_FullCache_1000000_WithTinyTTL_Parallel_LRI(b *testing.B) {
 	})
 }
 
+func BenchmarkHas_FullCache_1000000_Parallel(b *testing.B) {
+	cache := New(lraConfig)
+
+	for i := 0; i < bigSize; i++ {
+		cache.Set(Entry{Key: strconv.Itoa(i), Value: lraConfig})
+	}
+
+	b.ResetTimer()
+
+	i := 0
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			i++
+			cache.Has(strconv.Itoa(i))
+		}
+	})
+}
+
 func BenchmarkSet_LRA(b *testing.B) {
 	cache := New(lraConfig)
 

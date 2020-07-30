@@ -382,6 +382,29 @@ func TestEvictionReasonsToString(t *testing.T) {
 	assert.Equal("Deleted", EvictionReasonDeleted.String())
 }
 
+func TestLRUCacheHas(t *testing.T) {
+	assert := assert.New(t)
+	for _, policy := range policies {
+		config := Config{
+			Size:           10,
+			TTL:            time.Minute,
+			EvictionPolicy: policy,
+		}
+		cache := New(config)
+
+		cache.Set(entry1)
+		cache.Set(entry2)
+
+		hasEntry1Key := cache.Has(entry1.Key)
+		hasEntry2Key := cache.Has(entry2.Key)
+		hasEntry3Key := cache.Has(entry3.Key)
+
+		assert.True(hasEntry1Key)
+		assert.True(hasEntry2Key)
+		assert.False(hasEntry3Key)
+	}
+}
+
 // Integration tests - LRA evictionPolicy
 // -----------------------------------------------------------------------------
 func TestLRUCacheSetWithDuplicateKeyErrorLRA(t *testing.T) {

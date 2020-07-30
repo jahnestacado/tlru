@@ -72,6 +72,9 @@ type TLRU interface {
 
 	// SetState sets the internal State of the cache
 	SetState(state State) error
+
+	// Has returns true if the provided keys exists in cache otherwise it returns false
+	Has(key string) bool
 }
 
 // Config of tlru cache
@@ -323,6 +326,11 @@ func (c *tlru) SetState(state State) error {
 	c.cache = cache
 
 	return nil
+}
+
+func (c *tlru) Has(key string) bool {
+	_, exists := c.cache[key]
+	return exists
 }
 
 type doublyLinkedNode struct {
