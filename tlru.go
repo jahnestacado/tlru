@@ -329,7 +329,10 @@ func (c *tlru) SetState(state State) error {
 }
 
 func (c *tlru) Has(key string) bool {
+	defer c.Unlock()
+	c.Lock()
 	_, exists := c.cache[key]
+
 	return exists
 }
 
