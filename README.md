@@ -314,3 +314,5 @@ Copyright (c) 2020 Ioannis Tzanellis
 [Released under the MIT license](https://github.com/jahnestacado/tlru/blob/master/LICENSE)
 
 _Credits to [Ashley McNamara](https://github.com/ashleymcnamara) for the [gopher artwork](https://github.com/ashleymcnamara/gophers)_
+
+_This package is a custom implementation of [TLRU](https://en.wikipedia.org/wiki/Cache_replacement_policies#Time_aware_least_recently_used_(TLRU))_
