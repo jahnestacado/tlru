@@ -15,7 +15,7 @@ bench:
 
 #lint: @ Lints source code
 lint:
-	PWD=$(pwd) docker run --rm -v $PWD:/app -w /app golangci/golangci-lint:v1.49.0 golangci-lint run -v
+	docker run --rm -v ${CURDIR}:/app -w /app golangci/golangci-lint:v1.49.0 golangci-lint run -v
 
 #scan: @ Scans source code dependencies for vulnerabilities
 scan:

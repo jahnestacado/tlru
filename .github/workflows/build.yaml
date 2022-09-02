@@ -5,12 +5,28 @@ on: [ push ]
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ '1.14', '1.13' ]
+    name: Go ${{ matrix.go }} sample
     steps:
     - uses: actions/checkout@v2
       with:
         fetch-depth: '0'
+    - name: Setup go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ matrix.go }}
+
     - name: Run tests
       run: make test
+
+    - name: Upload test coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.txt
+        fail_ci_if_error: true
+        verbose: true
 
     - name: Run linter
       run: make lint
