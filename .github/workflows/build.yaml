@@ -1,0 +1,35 @@
+name: Build
+
+on: [ push ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: '0'
+    - name: Run tests
+      run: make test
+
+    - name: Run linter
+      run: make lint
+
+    - name: Run vulnerabilities scan
+      run: make scan
+
+  tag:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/master'
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: '0'
+    - name: Bump version and push tag
+      uses: anothrNick/github-tag-action@1.36.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+        WITH_V: true
+        VERBOSE: true
+        DEFAULT_BUMP: patch

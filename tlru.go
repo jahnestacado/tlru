@@ -170,11 +170,10 @@ const (
 
 type tlru struct {
 	sync.RWMutex
-	cache          map[string]*doublyLinkedNode
-	config         Config
-	headNode       *doublyLinkedNode
-	tailNode       *doublyLinkedNode
-	evictionPolicy evictionPolicy
+	cache    map[string]*doublyLinkedNode
+	config   Config
+	headNode *doublyLinkedNode
+	tailNode *doublyLinkedNode
 }
 
 // New returns a new instance of TLRU cache
