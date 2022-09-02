@@ -7,7 +7,7 @@ help:
 
 #test: @ Runs unit tests
 test:
-	go test -v -race -cover ./...
+	go test -race -v -coverprofile=coverage.txt -covermode=atomic
 
 #test: @ Runs performance tests
 bench:
