@@ -258,13 +258,13 @@ err := cache.SetState(state)
 ### Run Tests
 
 ```sh
-go test -v
+make test
 ```
 
 ### Benchmarks
 
 ```sh
-go test -bench=.
+make bench
 ```
 
 ```
