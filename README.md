@@ -268,44 +268,44 @@ make bench
 ```
 
 ```
-Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz x 8
-Ubuntu 18.04 LTS 4.15.3-041503-generic
-go version go1.13.3 linux/amd64
+21.6.0 Darwin Kernel Version 21.6.0
+go version go1.18.2 darwin/amd64
 
-goos: linux
+goos: darwin
 goarch: amd64
 pkg: github.com/jahnestacado/tlru
-BenchmarkGet_EmptyCache_LRA-8                                                   12684373                87.2 ns/op
-BenchmarkGet_EmptyCache_LRI-8                                                   13874630                91.6 ns/op
-BenchmarkGet_NonExistingKey_LRA-8                                               21357567                57.8 ns/op
-BenchmarkGet_NonExistingKey_LRI-8                                               20500442                57.6 ns/op
-BenchmarkGet_ExistingKey_LRA-8                                                   3172411               316 ns/op
-BenchmarkGet_ExistingKey_LRI-8                                                   4670583               231 ns/op
-BenchmarkGet_FullCache_1000000_Parallel_LRA-8                                    2632194               421 ns/op
-BenchmarkGet_FullCache_1000000_Parallel_LRI-8                                    3514875               317 ns/op
-BenchmarkGet_FullCache_1000000_WithTinyTTL_Parallel_LRA-8                        7565942               161 ns/op
-BenchmarkGet_FullCache_1000000_WithTinyTTL_Parallel_LRI-8                        7773847               163 ns/op
-BenchmarkHas_FullCache_1000000_Parallel-8                                       38943600                32.3 ns/op
-BenchmarkSet_LRA-8                                                               1516148               759 ns/op
-BenchmarkSet_LRI-8                                                                331556              3096 ns/op
-BenchmarkSet_EvictionChannelAttached_LRA-8                                        598498              1896 ns/op
-BenchmarkSet_EvictionChannelAttached_LRI-8                                        717724              1620 ns/op
-BenchmarkSet_ExistingKey_LRA-8                                                   2115715               580 ns/op
-BenchmarkSet_ExistingKey_LRI-8                                                   3604470               315 ns/op
-BenchmarkSet_Parallel_LRA-8                                                      1000000              1092 ns/op
-BenchmarkSet_Parallel_LRI-8                                                      1000000              1053 ns/op
-BenchmarkDelete_FullCache_1000000_Parallel_LRA-8                                 3052102               347 ns/op
-BenchmarkDelete_FullCache_1000000_Parallel_LRI-8                                 3187255               340 ns/op
-BenchmarkDelete_FullCache_1000000_Parallel_EvictionChannelAttached_LRA-8         1934300               536 ns/op
-BenchmarkDelete_FullCache_1000000_Parallel_EvictionChannelAttached_LRI-8         2140176               468 ns/op
-BenchmarkKeys_EmptyCache_LRA-8                                                  19683392                63.1 ns/op
-BenchmarkKeys_EmptyCache_LRI-8                                                  17585664                66.5 ns/op
-BenchmarkKeys_FullCache_1000000_LRA-8                                                 10         114582123 ns/op
-BenchmarkKeys_FullCache_1000000_LRI-8                                                 10         114496694 ns/op
-BenchmarkEntries_EmptyCache_LRA-8                                               18529286                65.9 ns/op
-BenchmarkEntries_EmptyCache_LRI-8                                               18128304                66.8 ns/op
-BenchmarkEntries_FullCache_1000000_LRA-8                                               6         199635586 ns/op
-BenchmarkEntries_FullCache_1000000_LRI-8                                               6         198991381 ns/op
+cpu: Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz
+BenchmarkGet_EmptyCache_LRA-16                        							23577234	    	45.52 ns/op
+BenchmarkGet_EmptyCache_LRI-16                        							27169711	    	45.60 ns/op
+BenchmarkGet_NonExistingKey_LRA-16                      						48853821	    	27.36 ns/op
+BenchmarkGet_NonExistingKey_LRI-16                      						45801547	    	25.17 ns/op
+BenchmarkGet_ExistingKey_LRA-16                        	 						 4631190	    	234.6 ns/op
+BenchmarkGet_ExistingKey_LRI-16                        	 						 5760564	    	182.7 ns/op
+BenchmarkGet_FullCache_1000000_Parallel_LRA-16                					19806835	    	58.29 ns/op
+BenchmarkGet_FullCache_1000000_Parallel_LRI-16                					16803621	    	63.58 ns/op
+BenchmarkGet_FullCache_1000000_WithTinyTTL_Parallel_LRA-16          	 		 9002697	    	165.8 ns/op
+BenchmarkGet_FullCache_1000000_WithTinyTTL_Parallel_LRI-16          	 		 8929759	    	132.2 ns/op
+BenchmarkHas_FullCache_1000000_Parallel-16                  					14102200	    	73.63 ns/op
+BenchmarkSet_LRA-16                              	 							 1387353	    	829.3 ns/op
+BenchmarkSet_LRI-16                              		 						 1379410	    	832.6 ns/op
+BenchmarkSet_EvictionChannelAttached_LRA-16                 	 				  990680	   		 1197 ns/op
+BenchmarkSet_EvictionChannelAttached_LRI-16                  	 				 1000000	   		 1162 ns/op
+BenchmarkSet_ExistingKey_LRA-16                        	 						 3146720	    	417.8 ns/op
+BenchmarkSet_ExistingKey_LRI-16                        	 						 3876129	    	304.1 ns/op
+BenchmarkSet_Parallel_LRA-16                         	 						 1403163	    	943.2 ns/op
+BenchmarkSet_Parallel_LRI-16                         	 						 1391424	    	940.9 ns/op
+BenchmarkDelete_FullCache_1000000_Parallel_LRA-16               	 			 3293047	    	386.2 ns/op
+BenchmarkDelete_FullCache_1000000_Parallel_LRI-16               	 			 2478804	    	410.1 ns/op
+BenchmarkDelete_FullCache_1000000_Parallel_EvictionChannelAttached_LRA-16   	 1696992	    	589.3 ns/op
+BenchmarkDelete_FullCache_1000000_Parallel_EvictionChannelAttached_LRI-16   	 1825086	    	571.8 ns/op
+BenchmarkKeys_EmptyCache_LRA-16                       							33238173	    	36.14 ns/op
+BenchmarkKeys_EmptyCache_LRI-16                      						 	33220628	    	35.83 ns/op
+BenchmarkKeys_FullCache_1000000_LRA-16                    	  						   7	 	153565363 ns/op
+BenchmarkKeys_FullCache_1000000_LRI-16                    	   						   7	 	151832828 ns/op
+BenchmarkEntries_EmptyCache_LRA-16                      						36623247	    	38.97 ns/op
+BenchmarkEntries_EmptyCache_LRI-16                      						31233552	    	35.47 ns/op
+BenchmarkEntries_FullCache_1000000_LRA-16                   	   					   4	 	256872533 ns/op
+BenchmarkEntries_FullCache_1000000_LRI-16                   	   				   	   4	 	260215655 ns/op
 ```
 
 ### License
