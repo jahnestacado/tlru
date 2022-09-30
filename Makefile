@@ -9,7 +9,7 @@ help:
 test:
 	go test -race -v -coverprofile=coverage.txt -covermode=atomic
 
-#test: @ Runs performance tests
+#bench: @ Runs performance tests
 bench:
 	go test -bench=.
 
