@@ -195,8 +195,8 @@ func New(config Config) TLRU {
 }
 
 func (c *tlru) Get(key string) *CacheEntry {
-	defer c.Unlock()
-	c.Lock()
+	defer c.RUnlock()
+	c.RLock()
 
 	linkedNode, exists := c.cache[key]
 	if !exists {
@@ -246,8 +246,8 @@ func (c *tlru) Delete(key string) {
 }
 
 func (c *tlru) Keys() []string {
-	defer c.Unlock()
-	c.Lock()
+	defer c.RUnlock()
+	c.RLock()
 	c.evictExpiredEntries()
 
 	keys := make([]string, 0, len(c.cache))
@@ -259,8 +259,8 @@ func (c *tlru) Keys() []string {
 }
 
 func (c *tlru) Entries() []CacheEntry {
-	defer c.Unlock()
-	c.Lock()
+	defer c.RUnlock()
+	c.RLock()
 	c.evictExpiredEntries()
 
 	entries := make([]CacheEntry, 0, len(c.cache))
@@ -328,8 +328,8 @@ func (c *tlru) SetState(state State) error {
 }
 
 func (c *tlru) Has(key string) bool {
-	defer c.Unlock()
-	c.Lock()
+	defer c.RUnlock()
+	c.RLock()
 	_, exists := c.cache[key]
 
 	return exists
