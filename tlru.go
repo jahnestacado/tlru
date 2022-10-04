@@ -31,7 +31,7 @@ type TLRU interface {
 	//		- If the key entry doesn't exist then it inserts it as the most
 	//		  recently used entry with Counter = 0
 	//		- If the key entry already exists then it will return an error
-	//		- If the cache is full (Config.Size) then the least recently accessed
+	//		- If the cache is full (Config.MaxSize) then the least recently accessed
 	//		  entry(the node before the tailNode) will be dropped and an
 	//		  EvictedEntry will be emitted to the EvictionChannel(if present)
 	//		  with EvictionReasonDropped
@@ -41,7 +41,7 @@ type TLRU interface {
 	//		- If the key entry already exists then it will update
 	//		  the Value, Counter and LastUsedAt properties of
 	//		  the existing entry and mark it as the most recently used entry
-	//		- If the cache is full (Config.Size) then
+	//		- If the cache is full (Config.MaxSize) then
 	//		  the least recently inserted entry(the node before the tailNode)
 	//		  will be dropped and an EvictedEntry will be emitted to
 	//		  the EvictionChannel(if present) with EvictionReasonDropped
@@ -80,13 +80,15 @@ type TLRU interface {
 // Config of tlru cache
 type Config struct {
 	// Max size of cache
-	Size int
+	MaxSize int
 	// Time to live of cached entries
 	TTL time.Duration
 	// Channel to listen for evicted entries events
 	EvictionChannel *chan EvictedEntry
 	// Eviction policy of tlru. Default is LRA
 	EvictionPolicy evictionPolicy
+	// GarbageCollectionInterval. If not set it defaults to 10 seconds
+	GarbageCollectionInterval *time.Duration
 }
 
 // Entry to be cached
@@ -168,12 +170,17 @@ const (
 	EvictionReasonDeleted
 )
 
+const (
+	defaultGarbageCollectionInterval = 10 * time.Second
+)
+
 type tlru struct {
 	sync.RWMutex
-	cache    map[string]*doublyLinkedNode
-	config   Config
-	headNode *doublyLinkedNode
-	tailNode *doublyLinkedNode
+	cache                     map[string]*doublyLinkedNode
+	config                    Config
+	headNode                  *doublyLinkedNode
+	tailNode                  *doublyLinkedNode
+	garbageCollectionInterval time.Duration
 }
 
 // New returns a new instance of TLRU cache
@@ -183,35 +190,49 @@ func New(config Config) TLRU {
 	headNode.next = tailNode
 	tailNode.previous = headNode
 
+	garbageCollectionInterval := defaultGarbageCollectionInterval
+	if config.GarbageCollectionInterval != nil {
+		garbageCollectionInterval = *config.GarbageCollectionInterval
+	}
+
 	cache := &tlru{
-		config: config,
-		cache:  make(map[string]*doublyLinkedNode, 0),
+		config:                    config,
+		cache:                     make(map[string]*doublyLinkedNode, 0),
+		garbageCollectionInterval: garbageCollectionInterval,
 	}
 
 	cache.initializeDoublyLinkedList()
-	cache.startTTLEvictionDaemon()
+	go cache.startTTLEvictionDaemon()
 
 	return cache
 }
 
 func (c *tlru) Get(key string) *CacheEntry {
-	defer c.RUnlock()
 	c.RLock()
 
 	linkedNode, exists := c.cache[key]
 	if !exists {
+		c.RUnlock()
 		return nil
 	}
 
 	if c.config.TTL < time.Since(linkedNode.lastUsedAt) {
+		c.RUnlock()
+		c.Lock()
+		defer c.Unlock()
 		c.evictEntry(linkedNode, EvictionReasonExpired)
 		return nil
 	}
 
 	if c.config.EvictionPolicy == LRA {
+		c.RUnlock()
+		c.Lock()
 		c.handleNodeState(Entry{Key: key, Value: linkedNode.value})
+		c.Unlock()
+		c.RLock()
 	}
 
+	defer c.RUnlock()
 	cacheEntry := linkedNode.ToCacheEntry()
 
 	return &cacheEntry
@@ -222,7 +243,7 @@ func (c *tlru) Set(entry Entry) error {
 	c.Lock()
 
 	_, exists := c.cache[entry.Key]
-	if !exists && len(c.cache) == c.config.Size {
+	if c.config.MaxSize != 0 && !exists && len(c.cache) == c.config.MaxSize {
 		c.evictEntry(c.tailNode.previous, EvictionReasonDropped)
 	}
 
@@ -246,9 +267,12 @@ func (c *tlru) Delete(key string) {
 }
 
 func (c *tlru) Keys() []string {
+	c.Lock()
+	c.evictExpiredEntries()
+	c.Unlock()
+
 	defer c.RUnlock()
 	c.RLock()
-	c.evictExpiredEntries()
 
 	keys := make([]string, 0, len(c.cache))
 	for key := range c.cache {
@@ -259,9 +283,12 @@ func (c *tlru) Keys() []string {
 }
 
 func (c *tlru) Entries() []CacheEntry {
+	c.Lock()
+	c.evictExpiredEntries()
+	c.Unlock()
+
 	defer c.RUnlock()
 	c.RLock()
-	c.evictExpiredEntries()
 
 	entries := make([]CacheEntry, 0, len(c.cache))
 	for _, linkedNode := range c.cache {
@@ -465,12 +492,10 @@ func (c *tlru) evictExpiredEntries() {
 }
 
 func (c *tlru) startTTLEvictionDaemon() {
-	go func() {
-		for {
-			time.Sleep(c.config.TTL)
-			c.Lock()
-			c.evictExpiredEntries()
-			c.Unlock()
-		}
-	}()
+	for {
+		time.Sleep(c.garbageCollectionInterval)
+		c.Lock()
+		c.evictExpiredEntries()
+		c.Unlock()
+	}
 }

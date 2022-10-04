@@ -20,10 +20,11 @@ var (
 func main() {
 	evictionChannel := make(chan tlru.EvictedEntry, 0)
 	config := tlru.Config{
-		Size:            3,
-		TTL:             ttl,
-		EvictionPolicy:  tlru.LRI,
-		EvictionChannel: &evictionChannel,
+		MaxSize:                   3,
+		TTL:                       ttl,
+		EvictionPolicy:            tlru.LRI,
+		EvictionChannel:           &evictionChannel,
+		GarbageCollectionInterval: &ttl,
 	}
 	cache := tlru.New(config)
 
