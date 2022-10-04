@@ -195,23 +195,31 @@ func New(config Config) TLRU {
 }
 
 func (c *tlru) Get(key string) *CacheEntry {
-	defer c.RUnlock()
 	c.RLock()
 
 	linkedNode, exists := c.cache[key]
 	if !exists {
+		c.RUnlock()
 		return nil
 	}
 
 	if c.config.TTL < time.Since(linkedNode.lastUsedAt) {
+		c.RUnlock()
+		c.Lock()
+		defer c.Unlock()
 		c.evictEntry(linkedNode, EvictionReasonExpired)
 		return nil
 	}
 
 	if c.config.EvictionPolicy == LRA {
+		c.RUnlock()
+		c.Lock()
 		c.handleNodeState(Entry{Key: key, Value: linkedNode.value})
+		c.Unlock()
+		c.RLock()
 	}
 
+	defer c.RUnlock()
 	cacheEntry := linkedNode.ToCacheEntry()
 
 	return &cacheEntry
@@ -246,9 +254,12 @@ func (c *tlru) Delete(key string) {
 }
 
 func (c *tlru) Keys() []string {
+	c.Lock()
+	c.evictExpiredEntries()
+	c.Unlock()
+
 	defer c.RUnlock()
 	c.RLock()
-	c.evictExpiredEntries()
 
 	keys := make([]string, 0, len(c.cache))
 	for key := range c.cache {
@@ -259,9 +270,12 @@ func (c *tlru) Keys() []string {
 }
 
 func (c *tlru) Entries() []CacheEntry {
+	c.Lock()
+	c.evictExpiredEntries()
+	c.Unlock()
+
 	defer c.RUnlock()
 	c.RLock()
-	c.evictExpiredEntries()
 
 	entries := make([]CacheEntry, 0, len(c.cache))
 	for _, linkedNode := range c.cache {
