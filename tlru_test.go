@@ -4,6 +4,7 @@
 package tlru
 
 import (
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -943,4 +944,76 @@ func TestLRUCacheEntriesWithAllExpiredLRI(t *testing.T) {
 
 	entries := cache.Entries()
 	assert.Equal(0, len(entries))
+}
+
+// Race condition test - Both eviction policies
+// -----------------------------------------------------------------------------
+func TestForRaceConditionsForBothEvictionPolicies(t *testing.T) {
+	assert := assert.New(t)
+	size := 10000
+	for i := range policies {
+		config := Config{
+			Size:           size,
+			TTL:            time.Millisecond,
+			EvictionPolicy: policies[i],
+		}
+		cache := New(config)
+
+		var wg sync.WaitGroup
+		for x := 0; x < size; x++ {
+			wg.Add(1)
+			v := strconv.Itoa(x)
+			go func() {
+				cache.Set(Entry{Key: v})
+				wg.Done()
+			}()
+			wg.Add(1)
+			go func() {
+				cache.Get(v)
+				wg.Done()
+			}()
+			wg.Add(1)
+			go func() {
+				cache.Delete(v)
+				wg.Done()
+			}()
+			wg.Add(1)
+			go func() {
+				cache.Has(v)
+				wg.Done()
+			}()
+			wg.Add(1)
+			go func() {
+				cache.GetState()
+				wg.Done()
+			}()
+			wg.Add(1)
+			go func() {
+				cache.SetState(State{
+					EvictionPolicy: policies[i],
+					ExtractedAt:    time.Now(),
+				})
+				wg.Done()
+			}()
+			wg.Add(1)
+			go func() {
+				cache.Keys()
+				wg.Done()
+			}()
+			wg.Add(1)
+			go func() {
+				cache.Entries()
+				wg.Done()
+			}()
+			wg.Add(1)
+			go func() {
+				cache.Clear()
+				wg.Done()
+			}()
+
+		}
+
+		wg.Wait()
+		assert.True(true)
+	}
 }
