@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	bigSize   = 1000000
+	bigSize   = 100000
 	smallSize = 10
 	tinyTTL   = 50 * time.Nanosecond
 )
@@ -95,7 +95,7 @@ func BenchmarkGet_ExistingKey_LRI(b *testing.B) {
 	}
 }
 
-func BenchmarkGet_FullCache_1000000_Parallel_LRA(b *testing.B) {
+func BenchmarkGet_FullCache_100000_Parallel_LRA(b *testing.B) {
 	cache := New(lraConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -113,7 +113,7 @@ func BenchmarkGet_FullCache_1000000_Parallel_LRA(b *testing.B) {
 	})
 }
 
-func BenchmarkGet_FullCache_1000000_Parallel_LRI(b *testing.B) {
+func BenchmarkGet_FullCache_100000_Parallel_LRI(b *testing.B) {
 	cache := New(lriConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -131,7 +131,7 @@ func BenchmarkGet_FullCache_1000000_Parallel_LRI(b *testing.B) {
 	})
 }
 
-func BenchmarkGet_FullCache_1000000_WithTinyTTL_Parallel_LRA(b *testing.B) {
+func BenchmarkGet_FullCache_100000_WithTinyTTL_Parallel_LRA(b *testing.B) {
 	config := Config{
 		MaxSize:        bigSize,
 		TTL:            tinyTTL,
@@ -154,7 +154,7 @@ func BenchmarkGet_FullCache_1000000_WithTinyTTL_Parallel_LRA(b *testing.B) {
 	})
 }
 
-func BenchmarkGet_FullCache_1000000_WithTinyTTL_Parallel_LRI(b *testing.B) {
+func BenchmarkGet_FullCache_100000_WithTinyTTL_Parallel_LRI(b *testing.B) {
 	config := Config{
 		MaxSize:        bigSize,
 		TTL:            tinyTTL,
@@ -177,7 +177,7 @@ func BenchmarkGet_FullCache_1000000_WithTinyTTL_Parallel_LRI(b *testing.B) {
 	})
 }
 
-func BenchmarkHas_FullCache_1000000_Parallel(b *testing.B) {
+func BenchmarkHas_FullCache_100000_Parallel(b *testing.B) {
 	cache := New(lraConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -299,7 +299,7 @@ func BenchmarkSet_Parallel_LRI(b *testing.B) {
 	})
 }
 
-func BenchmarkDelete_FullCache_1000000_Parallel_LRA(b *testing.B) {
+func BenchmarkDelete_FullCache_100000_Parallel_LRA(b *testing.B) {
 	cache := New(lraConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -317,7 +317,7 @@ func BenchmarkDelete_FullCache_1000000_Parallel_LRA(b *testing.B) {
 	})
 }
 
-func BenchmarkDelete_FullCache_1000000_Parallel_LRI(b *testing.B) {
+func BenchmarkDelete_FullCache_100000_Parallel_LRI(b *testing.B) {
 	cache := New(lriConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -335,7 +335,7 @@ func BenchmarkDelete_FullCache_1000000_Parallel_LRI(b *testing.B) {
 	})
 }
 
-func BenchmarkDelete_FullCache_1000000_Parallel_EvictionChannelAttached_LRA(b *testing.B) {
+func BenchmarkDelete_FullCache_100000_Parallel_EvictionChannelAttached_LRA(b *testing.B) {
 	evictionChannel := make(chan EvictedEntry, 0)
 	config := Config{
 		MaxSize:         bigSize,
@@ -366,7 +366,7 @@ func BenchmarkDelete_FullCache_1000000_Parallel_EvictionChannelAttached_LRA(b *t
 	})
 }
 
-func BenchmarkDelete_FullCache_1000000_Parallel_EvictionChannelAttached_LRI(b *testing.B) {
+func BenchmarkDelete_FullCache_100000_Parallel_EvictionChannelAttached_LRI(b *testing.B) {
 	evictionChannel := make(chan EvictedEntry, 0)
 	config := Config{
 		MaxSize:         bigSize,
@@ -410,7 +410,7 @@ func BenchmarkKeys_EmptyCache_LRI(b *testing.B) {
 	}
 }
 
-func BenchmarkKeys_FullCache_1000000_LRA(b *testing.B) {
+func BenchmarkKeys_FullCache_100000_LRA(b *testing.B) {
 	cache := New(lraConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -423,7 +423,7 @@ func BenchmarkKeys_FullCache_1000000_LRA(b *testing.B) {
 	}
 }
 
-func BenchmarkKeys_FullCache_1000000_LRI(b *testing.B) {
+func BenchmarkKeys_FullCache_100000_LRI(b *testing.B) {
 	cache := New(lriConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -450,7 +450,7 @@ func BenchmarkEntries_EmptyCache_LRI(b *testing.B) {
 	}
 }
 
-func BenchmarkEntries_FullCache_1000000_LRA(b *testing.B) {
+func BenchmarkEntries_FullCache_100000_LRA(b *testing.B) {
 	cache := New(lraConfig)
 
 	for i := 0; i < bigSize; i++ {
@@ -463,7 +463,7 @@ func BenchmarkEntries_FullCache_1000000_LRA(b *testing.B) {
 	}
 }
 
-func BenchmarkEntries_FullCache_1000000_LRI(b *testing.B) {
+func BenchmarkEntries_FullCache_100000_LRI(b *testing.B) {
 	cache := New(lriConfig)
 
 	for i := 0; i < bigSize; i++ {

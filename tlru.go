@@ -87,6 +87,8 @@ type Config struct {
 	EvictionChannel *chan EvictedEntry
 	// Eviction policy of tlru. Default is LRA
 	EvictionPolicy evictionPolicy
+	// GarbageCollectionInterval. If not set it defaults to 10 seconds
+	GarbageCollectionInterval *time.Duration
 }
 
 // Entry to be cached
@@ -168,12 +170,17 @@ const (
 	EvictionReasonDeleted
 )
 
+const (
+	defaultGarbageCollectionInterval = 10 * time.Second
+)
+
 type tlru struct {
 	sync.RWMutex
-	cache    map[string]*doublyLinkedNode
-	config   Config
-	headNode *doublyLinkedNode
-	tailNode *doublyLinkedNode
+	cache                     map[string]*doublyLinkedNode
+	config                    Config
+	headNode                  *doublyLinkedNode
+	tailNode                  *doublyLinkedNode
+	garbageCollectionInterval time.Duration
 }
 
 // New returns a new instance of TLRU cache
@@ -183,13 +190,19 @@ func New(config Config) TLRU {
 	headNode.next = tailNode
 	tailNode.previous = headNode
 
+	garbageCollectionInterval := defaultGarbageCollectionInterval
+	if config.GarbageCollectionInterval != nil {
+		garbageCollectionInterval = *config.GarbageCollectionInterval
+	}
+
 	cache := &tlru{
-		config: config,
-		cache:  make(map[string]*doublyLinkedNode, 0),
+		config:                    config,
+		cache:                     make(map[string]*doublyLinkedNode, 0),
+		garbageCollectionInterval: garbageCollectionInterval,
 	}
 
 	cache.initializeDoublyLinkedList()
-	cache.startTTLEvictionDaemon()
+	go cache.startTTLEvictionDaemon()
 
 	return cache
 }
@@ -479,12 +492,10 @@ func (c *tlru) evictExpiredEntries() {
 }
 
 func (c *tlru) startTTLEvictionDaemon() {
-	go func() {
-		for {
-			time.Sleep(c.config.TTL)
-			c.Lock()
-			c.evictExpiredEntries()
-			c.Unlock()
-		}
-	}()
+	for {
+		time.Sleep(c.garbageCollectionInterval)
+		c.Lock()
+		c.evictExpiredEntries()
+		c.Unlock()
+	}
 }
