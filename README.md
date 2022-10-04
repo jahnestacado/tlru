@@ -276,37 +276,37 @@ goos: darwin
 goarch: amd64
 pkg: github.com/jahnestacado/tlru
 cpu: Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz
-BenchmarkGet_EmptyCache_LRA-16                        							23577234	    	45.52 ns/op
-BenchmarkGet_EmptyCache_LRI-16                        							27169711	    	45.60 ns/op
-BenchmarkGet_NonExistingKey_LRA-16                      						48853821	    	27.36 ns/op
-BenchmarkGet_NonExistingKey_LRI-16                      						45801547	    	25.17 ns/op
-BenchmarkGet_ExistingKey_LRA-16                        	 						 4631190	    	234.6 ns/op
-BenchmarkGet_ExistingKey_LRI-16                        	 						 5760564	    	182.7 ns/op
-BenchmarkGet_FullCache_1000000_Parallel_LRA-16                						19806835	    	58.29 ns/op
-BenchmarkGet_FullCache_1000000_Parallel_LRI-16                						16803621	    	63.58 ns/op
-BenchmarkGet_FullCache_1000000_WithTinyTTL_Parallel_LRA-16          	 				 9002697	    	165.8 ns/op
-BenchmarkGet_FullCache_1000000_WithTinyTTL_Parallel_LRI-16          	 				 8929759	    	132.2 ns/op
-BenchmarkHas_FullCache_1000000_Parallel-16                  						14102200	    	73.63 ns/op
-BenchmarkSet_LRA-16                              	 						 1387353	    	829.3 ns/op
-BenchmarkSet_LRI-16                              		 					 1379410	    	832.6 ns/op
-BenchmarkSet_EvictionChannelAttached_LRA-16                 	 				  	  990680	   	 1197 ns/op
-BenchmarkSet_EvictionChannelAttached_LRI-16                  	 				 	 1000000	   	 1162 ns/op
-BenchmarkSet_ExistingKey_LRA-16                        	 						 3146720	    	417.8 ns/op
-BenchmarkSet_ExistingKey_LRI-16                        	 						 3876129	    	304.1 ns/op
-BenchmarkSet_Parallel_LRA-16                         	 						 1403163	    	943.2 ns/op
-BenchmarkSet_Parallel_LRI-16                         	 						 1391424	    	940.9 ns/op
-BenchmarkDelete_FullCache_1000000_Parallel_LRA-16               	 				 3293047	    	386.2 ns/op
-BenchmarkDelete_FullCache_1000000_Parallel_LRI-16               	 			 	 2478804	    	410.1 ns/op
-BenchmarkDelete_FullCache_1000000_Parallel_EvictionChannelAttached_LRA-16   				 1696992	    	589.3 ns/op
-BenchmarkDelete_FullCache_1000000_Parallel_EvictionChannelAttached_LRI-16   	 			 1825086	    	571.8 ns/op
-BenchmarkKeys_EmptyCache_LRA-16                       							33238173	    	36.14 ns/op
-BenchmarkKeys_EmptyCache_LRI-16                      						 	33220628	    	35.83 ns/op
-BenchmarkKeys_FullCache_1000000_LRA-16                    	  				    	       7	    153565363 ns/op
-BenchmarkKeys_FullCache_1000000_LRI-16                    	   					       7	    151832828 ns/op
-BenchmarkEntries_EmptyCache_LRA-16                      						36623247	    	38.97 ns/op
-BenchmarkEntries_EmptyCache_LRI-16                      						31233552	    	35.47 ns/op
-BenchmarkEntries_FullCache_1000000_LRA-16                   	   					       4	    256872533 ns/op
-BenchmarkEntries_FullCache_1000000_LRI-16                   	   				   	       4	    260215655 ns/op
+BenchmarkGet_EmptyCache_LRA-16                                              	29204826	        44.55 ns/op
+BenchmarkGet_EmptyCache_LRI-16                                              	28680338	        43.96 ns/op
+BenchmarkGet_NonExistingKey_LRA-16                                          	51993621	        22.72 ns/op
+BenchmarkGet_NonExistingKey_LRI-16                                          	53127615	        22.59 ns/op
+BenchmarkGet_ExistingKey_LRA-16                                             	15633502	        72.49 ns/op
+BenchmarkGet_ExistingKey_LRI-16                                             	14106654	        72.84 ns/op
+BenchmarkGet_FullCache_100000_Parallel_LRA-16                               	19972464	        57.66 ns/op
+BenchmarkGet_FullCache_100000_Parallel_LRI-16                               	21799681	        58.68 ns/op
+BenchmarkGet_FullCache_100000_WithTinyTTL_Parallel_LRA-16                   	22081754	        53.26 ns/op
+BenchmarkGet_FullCache_100000_WithTinyTTL_Parallel_LRI-16                   	20454691	        54.20 ns/op
+BenchmarkHas_FullCache_100000_Parallel-16                                   	19996741	        57.73 ns/op
+BenchmarkSet_LRA-16                                                         	 2263455	       561.0 ns/op
+BenchmarkSet_LRI-16                                                         	 2284095	       536.5 ns/op
+BenchmarkSet_EvictionChannelAttached_LRA-16                                 	 1348555	       877.9 ns/op
+BenchmarkSet_EvictionChannelAttached_LRI-16                                 	 1353513	       863.0 ns/op
+BenchmarkSet_ExistingKey_LRA-16                                             	 5201346	       258.9 ns/op
+BenchmarkSet_ExistingKey_LRI-16                                             	 5345276	       220.7 ns/op
+BenchmarkSet_Parallel_LRA-16                                                	 1789500	       682.0 ns/op
+BenchmarkSet_Parallel_LRI-16                                                	 1793680	       690.5 ns/op
+BenchmarkDelete_FullCache_100000_Parallel_LRA-16                            	 6431373	       185.6 ns/op
+BenchmarkDelete_FullCache_100000_Parallel_LRI-16                            	 6575835	       185.6 ns/op
+BenchmarkDelete_FullCache_100000_Parallel_EvictionChannelAttached_LRA-16    	 5505640	       187.3 ns/op
+BenchmarkDelete_FullCache_100000_Parallel_EvictionChannelAttached_LRI-16    	 5221836	       198.1 ns/op
+BenchmarkKeys_EmptyCache_LRA-16                                             	22313456	        52.64 ns/op
+BenchmarkKeys_EmptyCache_LRI-16                                             	23257614	        51.02 ns/op
+BenchmarkKeys_FullCache_100000_LRA-16                                       	     100	  10792932 ns/op
+BenchmarkKeys_FullCache_100000_LRI-16                                       	     100	  10719558 ns/op
+BenchmarkEntries_EmptyCache_LRA-16                                          	23483229	        51.20 ns/op
+BenchmarkEntries_EmptyCache_LRI-16                                          	22836296	        52.65 ns/op
+BenchmarkEntries_FullCache_100000_LRA-16                                    	      74	  16529933 ns/op
+BenchmarkEntries_FullCache_100000_LRI-16                                    	      76	  15255575 ns/op
 ```
 
 ### License
