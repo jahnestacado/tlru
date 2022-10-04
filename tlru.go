@@ -31,7 +31,7 @@ type TLRU interface {
 	//		- If the key entry doesn't exist then it inserts it as the most
 	//		  recently used entry with Counter = 0
 	//		- If the key entry already exists then it will return an error
-	//		- If the cache is full (Config.Size) then the least recently accessed
+	//		- If the cache is full (Config.MaxSize) then the least recently accessed
 	//		  entry(the node before the tailNode) will be dropped and an
 	//		  EvictedEntry will be emitted to the EvictionChannel(if present)
 	//		  with EvictionReasonDropped
@@ -41,7 +41,7 @@ type TLRU interface {
 	//		- If the key entry already exists then it will update
 	//		  the Value, Counter and LastUsedAt properties of
 	//		  the existing entry and mark it as the most recently used entry
-	//		- If the cache is full (Config.Size) then
+	//		- If the cache is full (Config.MaxSize) then
 	//		  the least recently inserted entry(the node before the tailNode)
 	//		  will be dropped and an EvictedEntry will be emitted to
 	//		  the EvictionChannel(if present) with EvictionReasonDropped
@@ -80,7 +80,7 @@ type TLRU interface {
 // Config of tlru cache
 type Config struct {
 	// Max size of cache
-	Size int
+	MaxSize int
 	// Time to live of cached entries
 	TTL time.Duration
 	// Channel to listen for evicted entries events
@@ -230,7 +230,7 @@ func (c *tlru) Set(entry Entry) error {
 	c.Lock()
 
 	_, exists := c.cache[entry.Key]
-	if !exists && len(c.cache) == c.config.Size {
+	if c.config.MaxSize != 0 && !exists && len(c.cache) == c.config.MaxSize {
 		c.evictEntry(c.tailNode.previous, EvictionReasonDropped)
 	}
 

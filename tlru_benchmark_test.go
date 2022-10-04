@@ -17,13 +17,13 @@ const (
 
 var (
 	lraConfig = Config{
-		Size:           bigSize,
+		MaxSize:        bigSize,
 		TTL:            time.Minute,
 		EvictionPolicy: LRA,
 	}
 
 	lriConfig = Config{
-		Size:           bigSize,
+		MaxSize:        bigSize,
 		TTL:            time.Minute,
 		EvictionPolicy: LRI,
 	}
@@ -133,7 +133,7 @@ func BenchmarkGet_FullCache_1000000_Parallel_LRI(b *testing.B) {
 
 func BenchmarkGet_FullCache_1000000_WithTinyTTL_Parallel_LRA(b *testing.B) {
 	config := Config{
-		Size:           bigSize,
+		MaxSize:        bigSize,
 		TTL:            tinyTTL,
 		EvictionPolicy: LRA,
 	}
@@ -156,7 +156,7 @@ func BenchmarkGet_FullCache_1000000_WithTinyTTL_Parallel_LRA(b *testing.B) {
 
 func BenchmarkGet_FullCache_1000000_WithTinyTTL_Parallel_LRI(b *testing.B) {
 	config := Config{
-		Size:           bigSize,
+		MaxSize:        bigSize,
 		TTL:            tinyTTL,
 		EvictionPolicy: LRI,
 	}
@@ -214,7 +214,7 @@ func BenchmarkSet_LRI(b *testing.B) {
 func BenchmarkSet_EvictionChannelAttached_LRA(b *testing.B) {
 	evictionChannel := make(chan EvictedEntry, 0)
 	config := Config{
-		Size:            smallSize,
+		MaxSize:         smallSize,
 		TTL:             time.Minute,
 		EvictionChannel: &evictionChannel,
 		EvictionPolicy:  LRA,
@@ -235,7 +235,7 @@ func BenchmarkSet_EvictionChannelAttached_LRA(b *testing.B) {
 func BenchmarkSet_EvictionChannelAttached_LRI(b *testing.B) {
 	evictionChannel := make(chan EvictedEntry, 0)
 	config := Config{
-		Size:            smallSize,
+		MaxSize:         smallSize,
 		TTL:             time.Minute,
 		EvictionChannel: &evictionChannel,
 		EvictionPolicy:  LRI,
@@ -338,7 +338,7 @@ func BenchmarkDelete_FullCache_1000000_Parallel_LRI(b *testing.B) {
 func BenchmarkDelete_FullCache_1000000_Parallel_EvictionChannelAttached_LRA(b *testing.B) {
 	evictionChannel := make(chan EvictedEntry, 0)
 	config := Config{
-		Size:            bigSize,
+		MaxSize:         bigSize,
 		TTL:             time.Minute,
 		EvictionChannel: &evictionChannel,
 		EvictionPolicy:  LRA,
@@ -369,7 +369,7 @@ func BenchmarkDelete_FullCache_1000000_Parallel_EvictionChannelAttached_LRA(b *t
 func BenchmarkDelete_FullCache_1000000_Parallel_EvictionChannelAttached_LRI(b *testing.B) {
 	evictionChannel := make(chan EvictedEntry, 0)
 	config := Config{
-		Size:            bigSize,
+		MaxSize:         bigSize,
 		TTL:             time.Minute,
 		EvictionChannel: &evictionChannel,
 		EvictionPolicy:  LRI,
