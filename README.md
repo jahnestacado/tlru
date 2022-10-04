@@ -47,7 +47,7 @@ When an entry from the cache is accessed via the `Get` method it is marked as th
 * Behavior upon `Set`
   - If the key entry doesn't exist then it inserts it as the most recently used entry with Counter = 0
   - If the key entry already exists then it will return an error
-  - If the cache is full (Config.Size) then the least recently accessed entry(the node before the tailNode) will be dropped and an EvictedEntry will be emitted to the EvictionChannel(if present) with EvictionReasonDropped
+  - If the cache is full (Config.MaxSize) then the least recently accessed entry(the node before the tailNode) will be dropped and an EvictedEntry will be emitted to the EvictionChannel(if present) with EvictionReasonDropped
 
 #### Example
 
@@ -74,10 +74,11 @@ var (
 func main() {
 	evictionChannel := make(chan tlru.EvictedEntry, 0)
 	config := tlru.Config{
-		Size:            2,
-		TTL:             ttl,
-		EvictionPolicy:  tlru.LRA,
-		EvictionChannel: &evictionChannel,
+		MaxSize:                   2,
+		TTL:                       ttl,
+		EvictionPolicy:            tlru.LRA,
+		EvictionChannel:           &evictionChannel,
+		GarbageCollectionInterval: &ttl,
 	}
 	cache := tlru.New(config)
 
@@ -135,7 +136,7 @@ multiple insertion of entries with the same key.
   - If the key entry doesn't exist then it inserts it as the most recently used entry with Counter = 1
   - If the key entry already exists then it will update the Value, Counter and LastUsedAt properties of
     the existing entry and mark it as the most recently used entry
-  - If the cache is full (Config.Size) then the least recently inserted entry(the node before the tailNode)
+  - If the cache is full (Config.MaxSize) then the least recently inserted entry(the node before the tailNode)
     will be dropped and an EvictedEntry will be emitted to the EvictionChannel(if present) with EvictionReasonDropped
 
 #### Example
@@ -163,10 +164,11 @@ var (
 func main() {
 	evictionChannel := make(chan tlru.EvictedEntry, 0)
 	config := tlru.Config{
-		Size:            3,
-		TTL:             ttl,
-		EvictionPolicy:  tlru.LRI,
-		EvictionChannel: &evictionChannel,
+		MaxSize:                   3,
+		TTL:                       ttl,
+		EvictionPolicy:            tlru.LRI,
+		EvictionChannel:           &evictionChannel,
+		GarbageCollectionInterval: &ttl,
 	}
 	cache := tlru.New(config)
 
@@ -216,7 +218,6 @@ the use of ingestion timestamps
 
 ```go
 config := tlru.Config{
-  Size:            100,
   TTL:             ttl,
   EvictionPolicy:  tlru.LRI,
 }
