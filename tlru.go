@@ -181,6 +181,8 @@ type tlru struct {
 	headNode                  *doublyLinkedNode
 	tailNode                  *doublyLinkedNode
 	garbageCollectionInterval time.Duration
+	ctx                       context.Context
+	Shutdown                  context.CancelFunc
 }
 
 // New returns a new instance of TLRU cache
@@ -202,6 +204,7 @@ func New(config Config) TLRU {
 	}
 
 	cache.initializeDoublyLinkedList()
+	cache.ctx, cache.cancel = context.WithCancel(context.Background())
 	go cache.startTTLEvictionDaemon()
 
 	return cache
@@ -492,10 +495,20 @@ func (c *tlru) evictExpiredEntries() {
 }
 
 func (c *tlru) startTTLEvictionDaemon() {
+	defer close(*c.config.EvictionChannel)
+
 	for {
-		time.Sleep(c.garbageCollectionInterval)
-		c.Lock()
-		c.evictExpiredEntries()
-		c.Unlock()
+		timer := time.NewTimer(c.garbageCollectionInterval)
+		select {
+		case <-c.ctx.Done():
+			if !timer.Stop() {
+				<-timer.C
+			}
+			return
+		case <-timer.C:
+			c.Lock()
+			c.evictExpiredEntries()
+			c.Unlock()
+		}
 	}
 }
