@@ -205,7 +205,7 @@ func New(config Config) TLRU {
 	}
 
 	cache.initializeDoublyLinkedList()
-	cache.ctx, cache.cancel = context.WithCancel(context.Background())
+	cache.ctx, cache.Shutdown = context.WithCancel(context.Background())
 	go cache.startTTLEvictionDaemon()
 
 	return cache
