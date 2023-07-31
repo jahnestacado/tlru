@@ -76,6 +76,9 @@ type TLRU interface {
 
 	// Has returns true if the provided keys exists in cache otherwise it returns false
 	Has(key string) bool
+
+	// Shutdown stops the garabage collection daemon
+	Shutdown()
 }
 
 // Config of tlru cache
