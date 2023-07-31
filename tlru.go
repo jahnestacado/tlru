@@ -498,9 +498,7 @@ func (c *tlru) evictExpiredEntries() {
 	}
 }
 
-func (c *tlru) startTTLEvictionDaemon() {
-	defer close(*c.config.EvictionChannel)
-
+func (c *tlru) startTTLEvictionDaemon() { 
 	for {
 		timer := time.NewTimer(c.garbageCollectionInterval)
 		select {
@@ -508,6 +506,7 @@ func (c *tlru) startTTLEvictionDaemon() {
 			if !timer.Stop() {
 				<-timer.C
 			}
+			close(*c.config.EvictionChannel)
 			return
 		case <-timer.C:
 			c.Lock()
