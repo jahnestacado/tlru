@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"context"
 )
 
 // TLRU cache public interface
@@ -75,6 +76,12 @@ type TLRU interface {
 
 	// Has returns true if the provided keys exists in cache otherwise it returns false
 	Has(key string) bool
+
+	// Start starts the garabage collection daemon
+	Start(context.Context)
+
+	// Shutdown stops the garabage collection daemon
+	Shutdown()
 }
 
 // Config of tlru cache
@@ -84,11 +91,11 @@ type Config struct {
 	// Time to live of cached entries
 	TTL time.Duration
 	// Channel to listen for evicted entries events
-	EvictionChannel *chan EvictedEntry
+	EvictionChannel chan EvictedEntry
 	// Eviction policy of tlru. Default is LRA
 	EvictionPolicy evictionPolicy
 	// GarbageCollectionInterval. If not set it defaults to 10 seconds
-	GarbageCollectionInterval *time.Duration
+	GarbageCollectionInterval time.Duration
 }
 
 // Entry to be cached
@@ -181,6 +188,8 @@ type tlru struct {
 	headNode                  *doublyLinkedNode
 	tailNode                  *doublyLinkedNode
 	garbageCollectionInterval time.Duration
+	ctx                       context.Context
+	cancelFunc                context.CancelFunc
 }
 
 // New returns a new instance of TLRU cache
@@ -191,8 +200,8 @@ func New(config Config) TLRU {
 	tailNode.previous = headNode
 
 	garbageCollectionInterval := defaultGarbageCollectionInterval
-	if config.GarbageCollectionInterval != nil {
-		garbageCollectionInterval = *config.GarbageCollectionInterval
+	if config.GarbageCollectionInterval != 0 {
+		garbageCollectionInterval = config.GarbageCollectionInterval
 	}
 
 	cache := &tlru{
@@ -202,9 +211,15 @@ func New(config Config) TLRU {
 	}
 
 	cache.initializeDoublyLinkedList()
-	go cache.startTTLEvictionDaemon()
 
 	return cache
+}
+
+// Start TTL eviction daemon
+// Use Shutdown to stop daemon
+func Start(ctx context.Context) {
+	cache.ctx, cache.cancelFunc = context.WithCancel(config.Context)
+	go cache.startTTLEvictionDaemon()
 }
 
 func (c *tlru) Get(key string) *CacheEntry {
@@ -491,11 +506,24 @@ func (c *tlru) evictExpiredEntries() {
 	}
 }
 
-func (c *tlru) startTTLEvictionDaemon() {
+func (c *tlru) startTTLEvictionDaemon() { 
 	for {
-		time.Sleep(c.garbageCollectionInterval)
-		c.Lock()
-		c.evictExpiredEntries()
-		c.Unlock()
+		timer := time.NewTimer(c.garbageCollectionInterval)
+		select {
+		case <-c.ctx.Done():
+			if !timer.Stop() {
+				<-timer.C
+			}
+			close(*c.config.EvictionChannel)
+			return
+		case <-timer.C:
+			c.Lock()
+			c.evictExpiredEntries()
+			c.Unlock()
+		}
 	}
+}
+
+func (c *tlru) Shutdown() {
+	c.cancelFunc()
 }
