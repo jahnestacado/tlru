@@ -77,6 +77,9 @@ type TLRU interface {
 	// Has returns true if the provided keys exists in cache otherwise it returns false
 	Has(key string) bool
 
+	// Run starts the garabage collection daemon
+	Run(context.Context)
+
 	// Shutdown stops the garabage collection daemon
 	Shutdown()
 }
