@@ -88,11 +88,11 @@ type Config struct {
 	// Time to live of cached entries
 	TTL time.Duration
 	// Channel to listen for evicted entries events
-	EvictionChannel *chan EvictedEntry
+	EvictionChannel chan EvictedEntry
 	// Eviction policy of tlru. Default is LRA
 	EvictionPolicy evictionPolicy
 	// GarbageCollectionInterval. If not set it defaults to 10 seconds
-	GarbageCollectionInterval *time.Duration
+	GarbageCollectionInterval time.Duration
 }
 
 // Entry to be cached
@@ -197,8 +197,8 @@ func New(config Config) TLRU {
 	tailNode.previous = headNode
 
 	garbageCollectionInterval := defaultGarbageCollectionInterval
-	if config.GarbageCollectionInterval != nil {
-		garbageCollectionInterval = *config.GarbageCollectionInterval
+	if config.GarbageCollectionInterval != 0 {
+		garbageCollectionInterval = config.GarbageCollectionInterval
 	}
 
 	cache := &tlru{
@@ -208,10 +208,15 @@ func New(config Config) TLRU {
 	}
 
 	cache.initializeDoublyLinkedList()
-	cache.ctx, cache.cancelFunc = context.WithCancel(context.Background())
-	go cache.startTTLEvictionDaemon()
 
 	return cache
+}
+
+// Start TTL eviction daemon
+// Use Shutdown to stop daemon
+func Start(ctx context.Context) {
+	cache.ctx, cache.cancelFunc = context.WithCancel(config.Context)
+	go cache.startTTLEvictionDaemon()
 }
 
 func (c *tlru) Get(key string) *CacheEntry {
