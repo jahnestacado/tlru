@@ -1038,3 +1038,66 @@ func TestForRaceConditionsForBothEvictionPolicies(t *testing.T) {
 		assert.True(true)
 	}
 }
+
+func TestDestroy(t *testing.T) {
+	assert := assert.New(t)
+
+	evictionChannel := make(chan EvictedEntry, 2)
+	ttl := 5 * time.Millisecond
+	config := Config{
+		MaxSize:                   2,
+		TTL:                       ttl,
+		EvictionChannel:           &evictionChannel,
+		EvictionPolicy:            LRA,
+		GarbageCollectionInterval: &ttl,
+	}
+	cache := New(config)
+
+	var (
+		evictedEntry1 EvictedEntry
+		evictedEntry2 EvictedEntry
+		evictedEntry4 EvictedEntry
+	)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		evictedEntry1 = <-evictionChannel
+	}()
+
+	cache.Set(entry1)
+	wg.Wait()
+	cache.Set(entry2)
+	cache.Set(entry3)
+	cache.Set(entry4)
+	evictedEntry2 = <-evictionChannel
+	cache.Get(entry4.Key)
+	cache.Delete(entry4.Key)
+	evictedEntry4 = <-evictionChannel
+
+	assert.Equal(entry1.Key, evictedEntry1.Key)
+	assert.Equal(entry2.Key, evictedEntry2.Key)
+	assert.Equal(entry4.Key, evictedEntry4.Key)
+
+	assert.Equal(EvictionReasonExpired, evictedEntry1.Reason)
+	assert.Equal(EvictionReasonDropped, evictedEntry2.Reason)
+	assert.Equal(EvictionReasonDeleted, evictedEntry4.Reason)
+
+	assert.Equal(int64(0), evictedEntry1.Counter)
+	assert.Equal(int64(0), evictedEntry2.Counter)
+	assert.Equal(int64(1), evictedEntry4.Counter)
+
+	keys := cache.Keys()
+	assert.Equal(1, len(keys))
+	assert.NotContains(keys, entry1.Key, entry2.Key, entry4.Key)
+	assert.Contains(keys, entry3.Key)
+
+	Destroy(&cache)
+	Destroy(nil)
+
+	_, ok := <-evictionChannel
+
+	assert.False(ok)
+	assert.Nil(cache)
+}

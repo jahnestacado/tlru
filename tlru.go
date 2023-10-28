@@ -75,6 +75,8 @@ type TLRU interface {
 
 	// Has returns true if the provided keys exists in cache otherwise it returns false
 	Has(key string) bool
+
+	destroy()
 }
 
 // Config of tlru cache
@@ -181,6 +183,16 @@ type tlru struct {
 	headNode                  *doublyLinkedNode
 	tailNode                  *doublyLinkedNode
 	garbageCollectionInterval time.Duration
+	garbageCollectionTimer    *time.Timer
+}
+
+// Destroy frees resources and sets cache to nil
+func Destroy(cache *TLRU) {
+	if cache != nil {
+		c := *cache
+		c.destroy()
+		*cache = nil
+	}
 }
 
 // New returns a new instance of TLRU cache
@@ -202,7 +214,12 @@ func New(config Config) TLRU {
 	}
 
 	cache.initializeDoublyLinkedList()
-	go cache.startTTLEvictionDaemon()
+
+	cache.garbageCollectionTimer = time.AfterFunc(garbageCollectionInterval, func() {
+		cache.Lock()
+		cache.evictExpiredEntries()
+		cache.Unlock()
+	})
 
 	return cache
 }
@@ -491,11 +508,8 @@ func (c *tlru) evictExpiredEntries() {
 	}
 }
 
-func (c *tlru) startTTLEvictionDaemon() {
-	for {
-		time.Sleep(c.garbageCollectionInterval)
-		c.Lock()
-		c.evictExpiredEntries()
-		c.Unlock()
-	}
+func (c *tlru) destroy() {
+	c.Clear()
+	close(*c.config.EvictionChannel)
+	c.garbageCollectionTimer.Stop()
 }
