@@ -64,8 +64,8 @@ import (
 var (
 	entry1 = Entry[string, int]{Key: "entry1", Value: 1}
 	entry2 = Entry[string, int]{Key: "entry2", Value: 2}
-	entry3   = Entry[string, int]{Key: "entry3", Value: 3}
-	entry4   = Entry[string, int]{Key: "entry4", Value: 4}
+	entry3 = Entry[string, int]{Key: "entry3", Value: 3}
+	entry4 = Entry[string, int]{Key: "entry4", Value: 4}
 	entry5 = Entry[string, int]{Key: "entry-5", Value: 5}
 
 	ttl = 2 * time.Millisecond
