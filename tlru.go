@@ -12,7 +12,7 @@ import (
 )
 
 // TLRU cache public interface
-type TLRU interface {
+type TLRU[K comparable, V any] interface {
 	// Get retrieves an entry from the cache by key
 	// Get behaves differently depending on the EvictionPolicy used
 	// * EvictionPolicy.LRA - (Least Recenty Accessed):
@@ -23,7 +23,7 @@ type TLRU interface {
 	//		- If an entry for the specified key doesn't exist then it returns nil
 	// * EvictionPolicy.LRI - (Least Recenty Inserted):
 	//		- If an entry for the specified key doesn't exist then it returns nil
-	Get(key string) *CacheEntry
+	Get(key K) *CacheEntry[K, V]
 
 	// Set inserts/updates an entry in the cache
 	// Set behaves differently depending on the EvictionPolicy used
@@ -45,22 +45,23 @@ type TLRU interface {
 	//		  the least recently inserted entry(the node before the tailNode)
 	//		  will be dropped and an EvictedEntry will be emitted to
 	//		  the EvictionChannel(if present) with EvictionReasonDropped
-	Set(entry Entry) error
+	Set(key K, value V) error
+	SetWithTimestamp(key K, value V, timestamp time.Time) error
 
 	// Delete removes the entry that corresponds to the provided key from cache
 	// An EvictedEntry will be emitted to the EvictionChannel(if present)
 	// with EvictionReasonDeleted
-	Delete(key string)
+	Delete(key K)
 
 	// Keys returns an unordered slice of all available keys in the cache
 	// The order of keys is not guaranteed
 	// It will also evict expired entries based on the TTL of the cache
-	Keys() []string
+	Keys() []K
 
 	// Entries returns an unordered slice of all available entries in the cache
 	// The order of entries is not guaranteed
 	// It will also evict expired entries based on the TTL of the cache
-	Entries() []CacheEntry
+	Entries() []CacheEntry[K, V]
 
 	// Clear removes all entries from the cache
 	Clear()
@@ -68,46 +69,46 @@ type TLRU interface {
 	// GetState returns the internal State of the cache
 	// This State can be put in persistent storage and rehydrated at a later point
 	// via the SetState method
-	GetState() State
+	GetState() State[K, V]
 
 	// SetState sets the internal State of the cache
-	SetState(state State) error
+	SetState(state State[K, V]) error
 
 	// Has returns true if the provided keys exists in cache otherwise it returns false
-	Has(key string) bool
-
-	destroy()
+	Has(key K) bool
 }
 
 // Config of tlru cache
-type Config struct {
+type Config[K comparable, V any] struct {
 	// Max size of cache
 	MaxSize int
 	// Time to live of cached entries
 	TTL time.Duration
 	// Channel to listen for evicted entries events
-	EvictionChannel *chan EvictedEntry
+	EvictionChannel *chan EvictedEntry[K, V]
 	// Eviction policy of tlru. Default is LRA
 	EvictionPolicy evictionPolicy
 	// GarbageCollectionInterval. If not set it defaults to 10 seconds
-	GarbageCollectionInterval *time.Duration
+	GarbageCollectionInterval time.Duration
 }
 
 // Entry to be cached
-type Entry struct {
+type Entry[K comparable, V any] struct {
 	// The unique identifier of entry
-	Key string `json:"key"`
+	Key K `json:"key"`
 	// The value to be cached
-	Value interface{} `json:"value"`
+	Value V `json:"value"`
 	// Optional field. If provided TTL of entry will be checked against this field
 	// Timestamp is in UTC
 	Timestamp *time.Time `json:"timestamp"`
 }
 
 // CacheEntry holds the cached value along with some additional information
-type CacheEntry struct {
+type CacheEntry[K comparable, V any] struct {
+	// The unique identifier of entry
+	Key K `json:"key"`
 	// The cached value
-	Value interface{} `json:"value"`
+	Value V `json:"value"`
 	// The number of times this entry has been inserted or accessed based
 	// on the EvictionPolicy
 	Counter int64 `json:"counter"`
@@ -120,19 +121,8 @@ type CacheEntry struct {
 
 // EvictedEntry is an entry that is removed from the cache due to
 // an evictionReason
-type EvictedEntry struct {
-	// The unique identifier of entry
-	Key string `json:"key"`
-	// The cached value
-	Value interface{} `json:"value"`
-	// The number of times this entry has been inserted or accessed based on
-	// the EvictionPolicy
-	Counter int64 `json:"counter"`
-	// The time that this entry was last inserted or accessed based on
-	// the EvictionPolicy
-	LastUsedAt time.Time `json:"last_used_at"`
-	// The time this entry was inserted to the cache
-	CreatedAt time.Time `json:"created_at"`
+type EvictedEntry[K comparable, V any] struct {
+	CacheEntry[K, V]
 	// The time this entry was evicted from the cache
 	EvictedAt time.Time `json:"evicted_at"`
 	// The reason this entry has been removed
@@ -141,19 +131,19 @@ type EvictedEntry struct {
 
 // State is the internal representation of the cache.
 // State can be retrieved/set via the GetState/SetState methods respectively
-type State struct {
-	Entries        []StateEntry   `json:"entries"`
-	EvictionPolicy evictionPolicy `json:"eviction_policy"`
-	ExtractedAt    time.Time      `json:"extracted_at"`
+type State[K comparable, V any] struct {
+	Entries        []StateEntry[K, V] `json:"entries"`
+	EvictionPolicy evictionPolicy     `json:"eviction_policy"`
+	ExtractedAt    time.Time          `json:"extracted_at"`
 }
 
 // StateEntry is a representation of a doublyLinkedNode without pointer references
-type StateEntry struct {
-	Key        string      `json:"key"`
-	Value      interface{} `json:"value"`
-	Counter    int64       `json:"counter"`
-	LastUsedAt time.Time   `json:"last_used_at"`
-	CreatedAt  time.Time   `json:"created_at"`
+type StateEntry[K comparable, V any] struct {
+	Key        K         `json:"key"`
+	Value      V         `json:"value"`
+	Counter    int64     `json:"counter"`
+	LastUsedAt time.Time `json:"last_used_at"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 const (
@@ -176,55 +166,41 @@ const (
 	defaultGarbageCollectionInterval = 10 * time.Second
 )
 
-type tlru struct {
+type tlru[K comparable, V any] struct {
 	sync.RWMutex
-	cache                     map[string]*doublyLinkedNode
-	config                    Config
-	headNode                  *doublyLinkedNode
-	tailNode                  *doublyLinkedNode
+	cache                     map[K]*doublyLinkedNode[K, V]
+	config                    Config[K, V]
+	headNode                  *doublyLinkedNode[K, V]
+	tailNode                  *doublyLinkedNode[K, V]
 	garbageCollectionInterval time.Duration
 	garbageCollectionTimer    *time.Timer
 }
 
-// Destroy frees resources and sets cache to nil
-func Destroy(cache *TLRU) {
-	if cache != nil {
-		c := *cache
-		c.destroy()
-		*cache = nil
-	}
-}
-
 // New returns a new instance of TLRU cache
-func New(config Config) TLRU {
-	headNode := &doublyLinkedNode{key: "head_node"}
-	tailNode := &doublyLinkedNode{key: "tail_node"}
+func New[K comparable, V any](config Config[K, V]) TLRU[K, V] {
+	var headNodeRef, tailNodeRef K
+	headNode := &doublyLinkedNode[K, V]{key: headNodeRef}
+	tailNode := &doublyLinkedNode[K, V]{key: tailNodeRef}
 	headNode.next = tailNode
 	tailNode.previous = headNode
 
 	garbageCollectionInterval := defaultGarbageCollectionInterval
-	if config.GarbageCollectionInterval != nil {
-		garbageCollectionInterval = *config.GarbageCollectionInterval
+	if config.GarbageCollectionInterval > 0 {
+		garbageCollectionInterval = config.GarbageCollectionInterval
 	}
 
-	cache := &tlru{
+	cache := &tlru[K, V]{
 		config:                    config,
-		cache:                     make(map[string]*doublyLinkedNode, 0),
+		cache:                     make(map[K]*doublyLinkedNode[K, V]),
 		garbageCollectionInterval: garbageCollectionInterval,
 	}
 
 	cache.initializeDoublyLinkedList()
 
-	cache.garbageCollectionTimer = time.AfterFunc(garbageCollectionInterval, func() {
-		cache.Lock()
-		cache.evictExpiredEntries()
-		cache.Unlock()
-	})
-
 	return cache
 }
 
-func (c *tlru) Get(key string) *CacheEntry {
+func (c *tlru[K, V]) Get(key K) *CacheEntry[K, V] {
 	c.RLock()
 
 	linkedNode, exists := c.cache[key]
@@ -244,7 +220,7 @@ func (c *tlru) Get(key string) *CacheEntry {
 	if c.config.EvictionPolicy == LRA {
 		c.RUnlock()
 		c.Lock()
-		c.handleNodeState(Entry{Key: key, Value: linkedNode.value})
+		c.handleNodeState(Entry[K, V]{Key: key, Value: linkedNode.value})
 		c.Unlock()
 		c.RLock()
 	}
@@ -255,17 +231,34 @@ func (c *tlru) Get(key string) *CacheEntry {
 	return &cacheEntry
 }
 
-func (c *tlru) Set(entry Entry) error {
+func (c *tlru[K, V]) Set(key K, value V) error {
+	return c.set(key, value, nil)
+}
+
+func (c *tlru[K, V]) SetWithTimestamp(key K, value V, timestamp time.Time) error {
+	return c.set(key, value, &timestamp)
+}
+
+func (c *tlru[K, V]) set(key K, value V, timestamp *time.Time) error {
 	defer c.Unlock()
 	c.Lock()
 
+	if c.garbageCollectionTimer == nil {
+		c.garbageCollectionTimer = time.AfterFunc(c.garbageCollectionInterval, func() {
+			c.Lock()
+			c.evictExpiredEntries()
+			c.Unlock()
+		})
+	}
+
+	entry := Entry[K, V]{Key: key, Value: value, Timestamp: timestamp}
 	_, exists := c.cache[entry.Key]
 	if c.config.MaxSize != 0 && !exists && len(c.cache) == c.config.MaxSize {
 		c.evictEntry(c.tailNode.previous, EvictionReasonDropped)
 	}
 
 	if exists && c.config.EvictionPolicy == LRA {
-		return fmt.Errorf("tlru.Set: Key '%s' already exist. Entry replacement is not allowed in LRA EvictionPolicy", entry.Key)
+		return fmt.Errorf("tlru.Set: Key '%+v' already exist. Entry replacement is not allowed in LRA EvictionPolicy", entry.Key)
 	}
 
 	c.handleNodeState(entry)
@@ -273,7 +266,7 @@ func (c *tlru) Set(entry Entry) error {
 	return nil
 }
 
-func (c *tlru) Delete(key string) {
+func (c *tlru[K, V]) Delete(key K) {
 	defer c.Unlock()
 	c.Lock()
 
@@ -283,7 +276,7 @@ func (c *tlru) Delete(key string) {
 	}
 }
 
-func (c *tlru) Keys() []string {
+func (c *tlru[K, V]) Keys() []K {
 	c.Lock()
 	c.evictExpiredEntries()
 	c.Unlock()
@@ -291,7 +284,7 @@ func (c *tlru) Keys() []string {
 	defer c.RUnlock()
 	c.RLock()
 
-	keys := make([]string, 0, len(c.cache))
+	keys := make([]K, 0, len(c.cache))
 	for key := range c.cache {
 		keys = append(keys, key)
 	}
@@ -299,7 +292,7 @@ func (c *tlru) Keys() []string {
 	return keys
 }
 
-func (c *tlru) Entries() []CacheEntry {
+func (c *tlru[K, V]) Entries() []CacheEntry[K, V] {
 	c.Lock()
 	c.evictExpiredEntries()
 	c.Unlock()
@@ -307,7 +300,7 @@ func (c *tlru) Entries() []CacheEntry {
 	defer c.RUnlock()
 	c.RLock()
 
-	entries := make([]CacheEntry, 0, len(c.cache))
+	entries := make([]CacheEntry[K, V], 0, len(c.cache))
 	for _, linkedNode := range c.cache {
 		entries = append(entries, linkedNode.ToCacheEntry())
 	}
@@ -315,20 +308,25 @@ func (c *tlru) Entries() []CacheEntry {
 	return entries
 }
 
-func (c *tlru) Clear() {
+func (c *tlru[K, V]) Clear() {
 	defer c.Unlock()
 	c.Lock()
 
 	c.clear()
+
+	if c.garbageCollectionTimer != nil {
+		c.garbageCollectionTimer.Stop()
+		c.garbageCollectionTimer = nil
+	}
 }
 
-func (c *tlru) GetState() State {
+func (c *tlru[K, V]) GetState() State[K, V] {
 	defer c.RUnlock()
 	c.RLock()
 
-	state := State{
+	state := State[K, V]{
 		EvictionPolicy: c.config.EvictionPolicy,
-		Entries:        make([]StateEntry, 0, len(c.cache)),
+		Entries:        make([]StateEntry[K, V], 0, len(c.cache)),
 		ExtractedAt:    time.Now().UTC(),
 	}
 
@@ -341,7 +339,7 @@ func (c *tlru) GetState() State {
 	return state
 }
 
-func (c *tlru) SetState(state State) error {
+func (c *tlru[K, V]) SetState(state State[K, V]) error {
 	defer c.Unlock()
 	c.Lock()
 	if state.EvictionPolicy != c.config.EvictionPolicy {
@@ -350,9 +348,9 @@ func (c *tlru) SetState(state State) error {
 	c.clear()
 
 	previousNode := c.headNode
-	cache := make(map[string]*doublyLinkedNode, 0)
+	cache := make(map[K]*doublyLinkedNode[K, V], 0)
 	for _, StateEntry := range state.Entries {
-		rehydratedNode := &doublyLinkedNode{
+		rehydratedNode := &doublyLinkedNode[K, V]{
 			key:        StateEntry.Key,
 			value:      StateEntry.Value,
 			counter:    StateEntry.Counter,
@@ -371,7 +369,7 @@ func (c *tlru) SetState(state State) error {
 	return nil
 }
 
-func (c *tlru) Has(key string) bool {
+func (c *tlru[K, V]) Has(key K) bool {
 	defer c.RUnlock()
 	c.RLock()
 	_, exists := c.cache[key]
@@ -379,38 +377,41 @@ func (c *tlru) Has(key string) bool {
 	return exists
 }
 
-type doublyLinkedNode struct {
-	key        string
-	value      interface{}
+type doublyLinkedNode[K comparable, V any] struct {
+	key        K
+	value      V
 	counter    int64
 	lastUsedAt time.Time
 	createdAt  time.Time
-	previous   *doublyLinkedNode
-	next       *doublyLinkedNode
+	previous   *doublyLinkedNode[K, V]
+	next       *doublyLinkedNode[K, V]
 }
 
-func (d *doublyLinkedNode) ToCacheEntry() CacheEntry {
-	return CacheEntry{
-		Value:      d.value,
-		Counter:    d.counter,
-		LastUsedAt: d.lastUsedAt,
-		CreatedAt:  d.createdAt,
-	}
-}
-func (d *doublyLinkedNode) ToEvictedEntry(reason evictionReason) EvictedEntry {
-	return EvictedEntry{
+func (d *doublyLinkedNode[K, V]) ToCacheEntry() CacheEntry[K, V] {
+	return CacheEntry[K, V]{
 		Key:        d.key,
 		Value:      d.value,
 		Counter:    d.counter,
 		LastUsedAt: d.lastUsedAt,
 		CreatedAt:  d.createdAt,
-		EvictedAt:  time.Now().UTC(),
-		Reason:     reason,
+	}
+}
+func (d *doublyLinkedNode[K, V]) ToEvictedEntry(reason evictionReason) EvictedEntry[K, V] {
+	return EvictedEntry[K, V]{
+		CacheEntry: CacheEntry[K, V]{
+			Key:        d.key,
+			Value:      d.value,
+			Counter:    d.counter,
+			LastUsedAt: d.lastUsedAt,
+			CreatedAt:  d.createdAt,
+		},
+		EvictedAt: time.Now().UTC(),
+		Reason:    reason,
 	}
 }
 
-func (d *doublyLinkedNode) ToStateEntry() StateEntry {
-	return StateEntry{
+func (d *doublyLinkedNode[K, V]) ToStateEntry() StateEntry[K, V] {
+	return StateEntry[K, V]{
 		Key:        d.key,
 		Value:      d.value,
 		Counter:    d.counter,
@@ -431,33 +432,34 @@ func (p evictionPolicy) String() string {
 	return [...]string{0: "LRA", 1: "LRI"}[p]
 }
 
-func (c *tlru) clear() {
+func (c *tlru[K, V]) clear() {
 	if len(c.cache) > 0 {
-		c.cache = make(map[string]*doublyLinkedNode, 0)
+		c.cache = make(map[K]*doublyLinkedNode[K, V])
 		c.initializeDoublyLinkedList()
 	}
 }
 
-func (c *tlru) initializeDoublyLinkedList() {
-	headNode := &doublyLinkedNode{key: "head_node"}
-	tailNode := &doublyLinkedNode{key: "tail_node"}
+func (c *tlru[K, V]) initializeDoublyLinkedList() {
+	var headNodeRef, tailNodeRef K
+	headNode := &doublyLinkedNode[K, V]{key: headNodeRef}
+	tailNode := &doublyLinkedNode[K, V]{key: tailNodeRef}
 	headNode.next = tailNode
 	tailNode.previous = headNode
 	c.headNode = headNode
 	c.tailNode = tailNode
 }
 
-func (c *tlru) handleNodeState(entry Entry) {
+func (c *tlru[K, V]) handleNodeState(e Entry[K, V]) {
 	var counter int64
 	if c.config.EvictionPolicy == LRI {
 		counter++
 	}
 
 	lastUsedAt := time.Now().UTC()
-	if entry.Timestamp != nil {
-		lastUsedAt = *entry.Timestamp
+	if e.Timestamp != nil {
+		lastUsedAt = *e.Timestamp
 	}
-	linkedNode, exists := c.cache[entry.Key]
+	linkedNode, exists := c.cache[e.Key]
 	if exists {
 		if c.config.TTL >= time.Since(linkedNode.lastUsedAt) {
 			linkedNode.counter++
@@ -468,9 +470,9 @@ func (c *tlru) handleNodeState(entry Entry) {
 		linkedNode.next.previous = linkedNode.previous
 		linkedNode.previous.next = linkedNode.next
 	} else {
-		linkedNode = &doublyLinkedNode{
-			key:        entry.Key,
-			value:      entry.Value,
+		linkedNode = &doublyLinkedNode[K, V]{
+			key:        e.Key,
+			value:      e.Value,
 			counter:    counter,
 			lastUsedAt: lastUsedAt,
 			previous:   c.headNode,
@@ -478,7 +480,7 @@ func (c *tlru) handleNodeState(entry Entry) {
 			createdAt:  time.Now().UTC(),
 		}
 
-		c.cache[entry.Key] = linkedNode
+		c.cache[e.Key] = linkedNode
 	}
 
 	// Re-wire headNode
@@ -488,7 +490,7 @@ func (c *tlru) handleNodeState(entry Entry) {
 	c.headNode.next = linkedNode
 }
 
-func (c *tlru) evictEntry(evictedNode *doublyLinkedNode, reason evictionReason) {
+func (c *tlru[K, V]) evictEntry(evictedNode *doublyLinkedNode[K, V], reason evictionReason) {
 	evictedNode.previous.next = evictedNode.next
 	evictedNode.next.previous = evictedNode.previous
 	delete(c.cache, evictedNode.key)
@@ -498,7 +500,7 @@ func (c *tlru) evictEntry(evictedNode *doublyLinkedNode, reason evictionReason) 
 	}
 }
 
-func (c *tlru) evictExpiredEntries() {
+func (c *tlru[K, V]) evictExpiredEntries() {
 	previousNode := c.tailNode.previous
 	for previousNode != nil && previousNode != c.headNode {
 		if c.config.TTL < time.Since(previousNode.lastUsedAt) {
@@ -506,10 +508,4 @@ func (c *tlru) evictExpiredEntries() {
 		}
 		previousNode = previousNode.previous
 	}
-}
-
-func (c *tlru) destroy() {
-	c.Clear()
-	close(*c.config.EvictionChannel)
-	c.garbageCollectionTimer.Stop()
 }

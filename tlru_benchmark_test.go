@@ -16,13 +16,13 @@ const (
 )
 
 var (
-	lraConfig = Config{
+	lraConfig = Config[string, int]{
 		MaxSize:        bigSize,
 		TTL:            time.Minute,
 		EvictionPolicy: LRA,
 	}
 
-	lriConfig = Config{
+	lriConfig = Config[string, int]{
 		MaxSize:        bigSize,
 		TTL:            time.Minute,
 		EvictionPolicy: LRI,
@@ -47,7 +47,7 @@ func BenchmarkGet_NonExistingKey_LRA(b *testing.B) {
 	cache := New(lraConfig)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
@@ -60,7 +60,7 @@ func BenchmarkGet_NonExistingKey_LRI(b *testing.B) {
 	cache := New(lriConfig)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
@@ -73,7 +73,7 @@ func BenchmarkGet_ExistingKey_LRA(b *testing.B) {
 	cache := New(lraConfig)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
@@ -86,7 +86,7 @@ func BenchmarkGet_ExistingKey_LRI(b *testing.B) {
 	cache := New(lriConfig)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
@@ -99,7 +99,7 @@ func BenchmarkGet_FullCache_100000_Parallel_LRA(b *testing.B) {
 	cache := New(lraConfig)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: lraConfig})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
@@ -117,7 +117,7 @@ func BenchmarkGet_FullCache_100000_Parallel_LRI(b *testing.B) {
 	cache := New(lriConfig)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: lraConfig})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
@@ -132,7 +132,7 @@ func BenchmarkGet_FullCache_100000_Parallel_LRI(b *testing.B) {
 }
 
 func BenchmarkGet_FullCache_100000_WithTinyTTL_Parallel_LRA(b *testing.B) {
-	config := Config{
+	config := Config[string, int]{
 		MaxSize:        bigSize,
 		TTL:            tinyTTL,
 		EvictionPolicy: LRA,
@@ -140,7 +140,7 @@ func BenchmarkGet_FullCache_100000_WithTinyTTL_Parallel_LRA(b *testing.B) {
 	cache := New(config)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: lraConfig})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
@@ -155,7 +155,7 @@ func BenchmarkGet_FullCache_100000_WithTinyTTL_Parallel_LRA(b *testing.B) {
 }
 
 func BenchmarkGet_FullCache_100000_WithTinyTTL_Parallel_LRI(b *testing.B) {
-	config := Config{
+	config := Config[string, int]{
 		MaxSize:        bigSize,
 		TTL:            tinyTTL,
 		EvictionPolicy: LRI,
@@ -163,7 +163,7 @@ func BenchmarkGet_FullCache_100000_WithTinyTTL_Parallel_LRI(b *testing.B) {
 	cache := New(config)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: lraConfig})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
@@ -181,7 +181,7 @@ func BenchmarkHas_FullCache_100000_Parallel(b *testing.B) {
 	cache := New(lraConfig)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: lraConfig})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
@@ -199,7 +199,7 @@ func BenchmarkSet_LRA(b *testing.B) {
 	cache := New(lraConfig)
 
 	for i := 0; i < b.N; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
+		cache.Set(strconv.Itoa(i), i)
 	}
 }
 
@@ -207,13 +207,13 @@ func BenchmarkSet_LRI(b *testing.B) {
 	cache := New(lriConfig)
 
 	for i := 0; i < b.N; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
+		cache.Set(strconv.Itoa(i), i)
 	}
 }
 
 func BenchmarkSet_EvictionChannelAttached_LRA(b *testing.B) {
-	evictionChannel := make(chan EvictedEntry, 0)
-	config := Config{
+	evictionChannel := make(chan EvictedEntry[string, int], 0)
+	config := Config[string, int]{
 		MaxSize:         smallSize,
 		TTL:             time.Minute,
 		EvictionChannel: &evictionChannel,
@@ -228,13 +228,13 @@ func BenchmarkSet_EvictionChannelAttached_LRA(b *testing.B) {
 	}()
 
 	for i := 0; i < b.N; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
+		cache.Set(strconv.Itoa(i), i)
 	}
 }
 
 func BenchmarkSet_EvictionChannelAttached_LRI(b *testing.B) {
-	evictionChannel := make(chan EvictedEntry, 0)
-	config := Config{
+	evictionChannel := make(chan EvictedEntry[string, int])
+	config := Config[string, int]{
 		MaxSize:         smallSize,
 		TTL:             time.Minute,
 		EvictionChannel: &evictionChannel,
@@ -249,29 +249,29 @@ func BenchmarkSet_EvictionChannelAttached_LRI(b *testing.B) {
 	}()
 
 	for i := 0; i < b.N; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
+		cache.Set(strconv.Itoa(i), i)
 	}
 }
 
 func BenchmarkSet_ExistingKey_LRA(b *testing.B) {
 	cache := New(lraConfig)
-	cache.Set(Entry{Key: "existing-key", Value: bigSize})
+	cache.Set("existing-key", bigSize)
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		cache.Set(Entry{Key: "existing-key", Value: bigSize})
+		cache.Set("existing-key", bigSize)
 	}
 }
 
 func BenchmarkSet_ExistingKey_LRI(b *testing.B) {
 	cache := New(lriConfig)
-	cache.Set(Entry{Key: "existing-key", Value: bigSize})
+	cache.Set("existing-key", bigSize)
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		cache.Set(Entry{Key: "existing-key", Value: bigSize})
+		cache.Set("existing-key", bigSize)
 	}
 }
 
@@ -282,7 +282,7 @@ func BenchmarkSet_Parallel_LRA(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			i++
-			cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
+			cache.Set(strconv.Itoa(i), i)
 		}
 	})
 }
@@ -294,7 +294,7 @@ func BenchmarkSet_Parallel_LRI(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			i++
-			cache.Set(Entry{Key: strconv.Itoa(i), Value: i})
+			cache.Set(strconv.Itoa(i), i)
 		}
 	})
 }
@@ -303,7 +303,7 @@ func BenchmarkDelete_FullCache_100000_Parallel_LRA(b *testing.B) {
 	cache := New(lraConfig)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: lraConfig})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
@@ -321,7 +321,7 @@ func BenchmarkDelete_FullCache_100000_Parallel_LRI(b *testing.B) {
 	cache := New(lriConfig)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: lraConfig})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
@@ -336,8 +336,8 @@ func BenchmarkDelete_FullCache_100000_Parallel_LRI(b *testing.B) {
 }
 
 func BenchmarkDelete_FullCache_100000_Parallel_EvictionChannelAttached_LRA(b *testing.B) {
-	evictionChannel := make(chan EvictedEntry, 0)
-	config := Config{
+	evictionChannel := make(chan EvictedEntry[string, int], 0)
+	config := Config[string, int]{
 		MaxSize:         bigSize,
 		TTL:             time.Minute,
 		EvictionChannel: &evictionChannel,
@@ -346,7 +346,7 @@ func BenchmarkDelete_FullCache_100000_Parallel_EvictionChannelAttached_LRA(b *te
 	cache := New(config)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: config})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
@@ -367,8 +367,8 @@ func BenchmarkDelete_FullCache_100000_Parallel_EvictionChannelAttached_LRA(b *te
 }
 
 func BenchmarkDelete_FullCache_100000_Parallel_EvictionChannelAttached_LRI(b *testing.B) {
-	evictionChannel := make(chan EvictedEntry, 0)
-	config := Config{
+	evictionChannel := make(chan EvictedEntry[string, int], 0)
+	config := Config[string, int]{
 		MaxSize:         bigSize,
 		TTL:             time.Minute,
 		EvictionChannel: &evictionChannel,
@@ -377,7 +377,7 @@ func BenchmarkDelete_FullCache_100000_Parallel_EvictionChannelAttached_LRI(b *te
 	cache := New(config)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: config})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
@@ -414,7 +414,7 @@ func BenchmarkKeys_FullCache_100000_LRA(b *testing.B) {
 	cache := New(lraConfig)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: lraConfig})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
@@ -427,7 +427,7 @@ func BenchmarkKeys_FullCache_100000_LRI(b *testing.B) {
 	cache := New(lriConfig)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: lraConfig})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
@@ -454,7 +454,7 @@ func BenchmarkEntries_FullCache_100000_LRA(b *testing.B) {
 	cache := New(lraConfig)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: lraConfig})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
@@ -467,7 +467,7 @@ func BenchmarkEntries_FullCache_100000_LRI(b *testing.B) {
 	cache := New(lriConfig)
 
 	for i := 0; i < bigSize; i++ {
-		cache.Set(Entry{Key: strconv.Itoa(i), Value: lraConfig})
+		cache.Set(strconv.Itoa(i), i)
 	}
 
 	b.ResetTimer()
