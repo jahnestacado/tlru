@@ -62,63 +62,69 @@ import (
 )
 
 var (
-	entry1 = tlru.Entry{Key: "entry-1", Value: 1}
-	entry2 = tlru.Entry{Key: "entry-2", Value: 2}
-	entry3 = tlru.Entry{Key: "entry-3", Value: 3}
-	entry4 = tlru.Entry{Key: "entry-4", Value: 4}
-	entry5 = tlru.Entry{Key: "entry-5", Value: 5}
+	entry1 = Entry[string, int]{Key: "entry1", Value: 1}
+	entry2 = Entry[string, int]{Key: "entry2", Value: 2}
+	entry3   = Entry[string, int]{Key: "entry3", Value: 3}
+	entry4   = Entry[string, int]{Key: "entry4", Value: 4}
+	entry5 = Entry[string, int]{Key: "entry-5", Value: 5}
 
 	ttl = 2 * time.Millisecond
 )
 
 func main() {
-	evictionChannel := make(chan tlru.EvictedEntry, 0)
-	config := tlru.Config{
+	evictionChannel := make(chan tlru.EvictedEntry[string, int])
+	config := tlru.Config[string, int]{
 		MaxSize:                   2,
 		TTL:                       ttl,
 		EvictionPolicy:            tlru.LRA,
 		EvictionChannel:           &evictionChannel,
-		GarbageCollectionInterval: &ttl,
+		GarbageCollectionInterval: ttl,
 	}
 	cache := tlru.New(config)
 
 	go func() {
-		for evictedEntry := range evictionChannel {
+		for {
+			evictedEntry := <-evictionChannel
 			fmt.Printf("Entry with key: '%s' has been evicted with reason: %s\n", evictedEntry.Key, evictedEntry.Reason.String())
-			// Entry with key: 'entry-1' has been evicted with reason: Expired
-			// Entry with key: 'entry-2' has been evicted with reason: Dropped
-			// Entry with key: 'entry-4' has been evicted with reason: Deleted
 		}
 	}()
 
-	cache.Set(entry1)
+	cache.Set(entry1.Key, entry1.Value)
 	time.Sleep(2 * ttl)
-	cache.Set(entry2)
-	cache.Set(entry3)
-	cache.Set(entry4)
+	cache.Set(entry2.Key, entry2.Value)
+	cache.Set(entry3.Key, entry3.Value)
+	cache.Set(entry4.Key, entry4.Value)
 	cache.Delete(entry4.Key)
-	cache.Set(entry5)
+	cache.Set(entry5.Key, entry5.Value)
 
 	// Duplicate keys are not allowed in LRA
-	err := cache.Set(entry5)
+	err := cache.Set(entry5.Key, entry5.Value)
 	if err != nil {
 		fmt.Println(err.Error())
-		// tlru.Set: Key 'entry-5' already exist. Entry replacement is not allowed in LRA EvictionPolicy
 	}
 
-	keys := cache.Keys()
-	fmt.Printf("Keys in cache: %v\n", keys)
-	// Keys in cache: [key5 key3] (The key order is not guaranteed)
+	fmt.Printf("Number of Keys in cache: %d\n", len(cache.Keys()))
+	fmt.Printf("Entry with key: 'entry-3' is in cache: %t\n", cache.Has(entry3.Key))
+	fmt.Printf("Entry with key: 'entry-5' is in cache: %t\n", cache.Has(entry5.Key))
 
 	cache.Get(entry3.Key)
 	cachedEntry3 := cache.Get(entry3.Key)
-	fmt.Printf("Entry with key: '%s' has been accessed %d times \n", entry3.Key, cachedEntry3.Counter)
-	// Entry with key: 'entry-3' has been accessed 2 times
+	fmt.Printf("Entry with key: '%s' has been accessed %d times\n", entry3.Key, cachedEntry3.Counter)
 
 	cache.Get(entry5.Key)
 	cache.Get(entry5.Key)
 	cachedEntry5 := cache.Get(entry5.Key)
-	fmt.Printf("Entry with key: '%s' has been accessed %d times \n", entry5.Key, cachedEntry5.Counter)
+	fmt.Printf("Entry with key: '%s' has been accessed %d times\n", entry5.Key, cachedEntry5.Counter)
+
+	// Output:
+	// Entry with key: 'entry-1' has been evicted with reason: Expired
+	// Entry with key: 'entry-2' has been evicted with reason: Dropped
+	// Entry with key: 'entry-4' has been evicted with reason: Deleted
+	// tlru.Set: Key 'entry-5' already exist. Entry replacement is not allowed in LRA EvictionPolicy
+	// Number of Keys in cache: 2
+	// Entry with key: 'entry-3' is in cache: true
+	// Entry with key: 'entry-5' is in cache: true
+	// Entry with key: 'entry-3' has been accessed 2 times
 	// Entry with key: 'entry-5' has been accessed 3 times
 }
 
@@ -162,46 +168,52 @@ var (
 )
 
 func main() {
-	evictionChannel := make(chan tlru.EvictedEntry, 0)
-	config := tlru.Config{
+	evictionChannel := make(chan tlru.EvictedEntry[string, int])
+	config := tlru.Config[string, int]{
 		MaxSize:                   3,
 		TTL:                       ttl,
 		EvictionPolicy:            tlru.LRI,
 		EvictionChannel:           &evictionChannel,
-		GarbageCollectionInterval: &ttl,
+		GarbageCollectionInterval: ttl,
 	}
 	cache := tlru.New(config)
 
 	go func() {
-		for evictedEntry := range evictionChannel {
+		for {
+			evictedEntry := <-evictionChannel
 			fmt.Printf("Entry with key: '%s' has been evicted with reason: %s\n", evictedEntry.Key, evictedEntry.Reason.String())
-			// Entry with key: 'entry-1' has been evicted with reason: Expired
-			// Entry with key: 'entry-3' has been evicted with reason: Dropped
-			// Entry with key: 'entry-5' has been evicted with reason: Deleted
 		}
 	}()
 
-	cache.Set(entry1)
+	cache.Set(entry1.Key, entry1.Value)
 	time.Sleep(2 * ttl)
-	cache.Set(entry2)
-	cache.Set(entry3)
-	cache.Set(entry2)
-	cache.Set(entry4)
-	cache.Set(entry4)
-	cache.Set(entry5)
-	cache.Set(entry4)
+	cache.Set(entry2.Key, entry2.Value)
+	cache.Set(entry3.Key, entry3.Value)
+	cache.Set(entry2.Key, entry2.Value)
+	cache.Set(entry4.Key, entry4.Value)
+	cache.Set(entry4.Key, entry4.Value)
+	cache.Set(entry5.Key, entry5.Value)
+	cache.Set(entry4.Key, entry4.Value)
 
 	cache.Delete(entry5.Key)
 
-	keys := cache.Keys()
-	fmt.Printf("Keys in cache: %v\n", keys)
-	// Keys in cache: [entry-2 entry-4] (The key order is not guaranteed)
+	fmt.Printf("Number of Keys in cache: %d\n", len(cache.Keys()))
+	fmt.Printf("Entry with key: 'entry-2' is in cache: %t\n", cache.Has(entry2.Key))
+	fmt.Printf("Entry with key: 'entry-4' is in cache: %t\n", cache.Has(entry4.Key))
 
 	cachedEntry2 := cache.Get(entry2.Key)
-	fmt.Printf("Entry with key: '%s' has been inserted %d times \n", entry2.Key, cachedEntry2.Counter)
-	// Entry with key: 'entry-2' has been inserted 2 times
+	fmt.Printf("Entry with key: '%s' has been inserted %d times\n", entry2.Key, cachedEntry2.Counter)
 	cachedEntry4 := cache.Get(entry4.Key)
-	fmt.Printf("Entry with '%s' has been inserted %d times \n", entry4.Key, cachedEntry4.Counter)
+	fmt.Printf("Entry with key: '%s' has been inserted %d times\n", entry4.Key, cachedEntry4.Counter)
+
+	// Output:
+	// Entry with key: 'entry-1' has been evicted with reason: Expired
+	// Entry with key: 'entry-3' has been evicted with reason: Dropped
+	// Entry with key: 'entry-5' has been evicted with reason: Deleted
+	// Number of Keys in cache: 2
+	// Entry with key: 'entry-2' is in cache: true
+	// Entry with key: 'entry-4' is in cache: true
+	// Entry with key: 'entry-2' has been inserted 2 times
 	// Entry with key: 'entry-4' has been inserted 3 times
 }
 
@@ -217,7 +229,7 @@ This is more relevant for the LRI eviction policy which allows multiple insertio
 the use of ingestion timestamps
 
 ```go
-config := tlru.Config{
+config := tlru.Config[string, int]{
   TTL:             ttl,
   EvictionPolicy:  tlru.LRI,
 }
@@ -316,4 +328,4 @@ Copyright (c) 2020 Ioannis Tzanellis
 
 _Credits to [Ashley McNamara](https://github.com/ashleymcnamara) for the [gopher artwork](https://github.com/ashleymcnamara/gophers)_
 
-_This package is a custom implementation of [TLRU](https://en.wikipedia.org/wiki/Cache_replacement_policies#Time_aware_least_recently_used_(TLRU))_
+_This package is a custom implementation of [TLRU](https://en.wikipedia.org/wiki/Cache_replacement_policies#Time_aware_least_recently_used_(TLRU)) concept_
