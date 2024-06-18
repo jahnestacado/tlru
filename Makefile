@@ -9,6 +9,10 @@ help:
 test:
 	go test -race -v -coverprofile=coverage.txt -covermode=atomic
 
+#test.examples: @ Runs examples
+test.examples:
+	go test -race -v ./examples
+
 #bench: @ Runs performance tests
 bench:
 	go test -bench=.

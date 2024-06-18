@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.13', '1.14', '1.15', '1.16', '1.17', '1.18' ]
+        go: [ '1.18', '1.19', '1.20', '1.21', '1.22' ]
     name: Go ${{ matrix.go }} sample
     steps:
     - uses: actions/checkout@v2
@@ -25,9 +25,13 @@ jobs:
       uses: codecov/codecov-action@v3
       if: matrix.go == '1.18'
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage.txt
         fail_ci_if_error: true
         verbose: true
+
+    - name: Run examples
+      run: make test.examples
 
     - name: Run linter
       run: make lint
