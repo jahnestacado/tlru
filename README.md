@@ -239,8 +239,8 @@ cache := tlru.New(config)
 entry1 := tlru.Entry{Key:"entry-1", Value: 1, Timestamp: ingestionTimestamp1}
 entry2 := tlru.Entry{Key:"entry-2", Value: 2, Timestamp: ingestionTimestamp2}
 
-cache.Set(entry1)
-cache.Set(entry2)
+cache.Set(entry1.Key, entry.Value)
+cache.Set(entry2.Key, entry.Value)
 
 ```
 
@@ -249,10 +249,12 @@ cache.Set(entry2)
 TLRU provides two methods which allows cache state extraction and state rehydration
 
 ```go
-
+config := tlru.Config[string, int]{
+  TTL:             ttl,
+}
 cache := tlru.New(config)
-cache.Set(entry1)
-cache.Set(entry2)
+cache.Set(entry1.Key, entry.Value)
+cache.Set(entry2.Key, entry.Value)
 
 // ...
 // State extraction
