@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jahnestacado/tlru"
+	"github.com/jahnestacado/tlru/v3"
 )
 
 var (
