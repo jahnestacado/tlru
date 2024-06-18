@@ -11,73 +11,6 @@ import (
 	"time"
 )
 
-// TLRU cache public interface
-type TLRU[K comparable, V any] interface {
-	// Get retrieves an entry from the cache by key
-	// Get behaves differently depending on the EvictionPolicy used
-	// * EvictionPolicy.LRA - (Least Recenty Accessed):
-	//		- If the key entry exists then the entry is marked as the
-	//		  most recently used entry
-	//		- If the key entry exists then the entrys Counter is incremented and the
-	//		  LastUsedAt property is updated
-	//		- If an entry for the specified key doesn't exist then it returns nil
-	// * EvictionPolicy.LRI - (Least Recenty Inserted):
-	//		- If an entry for the specified key doesn't exist then it returns nil
-	Get(key K) *CacheEntry[K, V]
-
-	// Set inserts/updates an entry in the cache
-	// Set behaves differently depending on the EvictionPolicy used
-	// * EvictionPolicy.LRA - (Least Recenty Accessed):
-	//		- If the key entry doesn't exist then it inserts it as the most
-	//		  recently used entry with Counter = 0
-	//		- If the key entry already exists then it will return an error
-	//		- If the cache is full (Config.MaxSize) then the least recently accessed
-	//		  entry(the node before the tailNode) will be dropped and an
-	//		  EvictedEntry will be emitted to the EvictionChannel(if present)
-	//		  with EvictionReasonDropped
-	// * EvictionPolicy.LRI - (Least Recenty Inserted):
-	//		- If the key entry doesn't exist then it inserts it as the
-	//		  most recently used entry with Counter = 1
-	//		- If the key entry already exists then it will update
-	//		  the Value, Counter and LastUsedAt properties of
-	//		  the existing entry and mark it as the most recently used entry
-	//		- If the cache is full (Config.MaxSize) then
-	//		  the least recently inserted entry(the node before the tailNode)
-	//		  will be dropped and an EvictedEntry will be emitted to
-	//		  the EvictionChannel(if present) with EvictionReasonDropped
-	Set(key K, value V) error
-	SetWithTimestamp(key K, value V, timestamp time.Time) error
-
-	// Delete removes the entry that corresponds to the provided key from cache
-	// An EvictedEntry will be emitted to the EvictionChannel(if present)
-	// with EvictionReasonDeleted
-	Delete(key K)
-
-	// Keys returns an unordered slice of all available keys in the cache
-	// The order of keys is not guaranteed
-	// It will also evict expired entries based on the TTL of the cache
-	Keys() []K
-
-	// Entries returns an unordered slice of all available entries in the cache
-	// The order of entries is not guaranteed
-	// It will also evict expired entries based on the TTL of the cache
-	Entries() []CacheEntry[K, V]
-
-	// Clear removes all entries from the cache
-	Clear()
-
-	// GetState returns the internal State of the cache
-	// This State can be put in persistent storage and rehydrated at a later point
-	// via the SetState method
-	GetState() State[K, V]
-
-	// SetState sets the internal State of the cache
-	SetState(state State[K, V]) error
-
-	// Has returns true if the provided keys exists in cache otherwise it returns false
-	Has(key K) bool
-}
-
 // Config of tlru cache
 type Config[K comparable, V any] struct {
 	// Max size of cache
@@ -177,7 +110,7 @@ type tlru[K comparable, V any] struct {
 }
 
 // New returns a new instance of TLRU cache
-func New[K comparable, V any](config Config[K, V]) TLRU[K, V] {
+func New[K comparable, V any](config Config[K, V]) *tlru[K, V] {
 	var headNodeRef, tailNodeRef K
 	headNode := &doublyLinkedNode[K, V]{key: headNodeRef}
 	tailNode := &doublyLinkedNode[K, V]{key: tailNodeRef}
@@ -200,6 +133,17 @@ func New[K comparable, V any](config Config[K, V]) TLRU[K, V] {
 	return cache
 }
 
+// Get retrieves an entry from the cache by key
+// Get behaves differently depending on the EvictionPolicy used
+// * EvictionPolicy.LRA - (Least Recenty Accessed):
+//   - If the key entry exists then the entry is marked as the
+//     most recently used entry
+//   - If the key entry exists then the entrys Counter is incremented and the
+//     LastUsedAt property is updated
+//   - If an entry for the specified key doesn't exist then it returns nil
+//
+// * EvictionPolicy.LRI - (Least Recenty Inserted):
+//   - If an entry for the specified key doesn't exist then it returns nil
 func (c *tlru[K, V]) Get(key K) *CacheEntry[K, V] {
 	c.RLock()
 
@@ -231,10 +175,32 @@ func (c *tlru[K, V]) Get(key K) *CacheEntry[K, V] {
 	return &cacheEntry
 }
 
+// Set inserts/updates an entry in the cache
+// Set behaves differently depending on the EvictionPolicy used
+// * EvictionPolicy.LRA - (Least Recenty Accessed):
+//   - If the key entry doesn't exist then it inserts it as the most
+//     recently used entry with Counter = 0
+//   - If the key entry already exists then it will return an error
+//   - If the cache is full (Config.MaxSize) then the least recently accessed
+//     entry(the node before the tailNode) will be dropped and an
+//     EvictedEntry will be emitted to the EvictionChannel(if present)
+//     with EvictionReasonDropped
+//
+// * EvictionPolicy.LRI - (Least Recenty Inserted):
+//   - If the key entry doesn't exist then it inserts it as the
+//     most recently used entry with Counter = 1
+//   - If the key entry already exists then it will update
+//     the Value, Counter and LastUsedAt properties of
+//     the existing entry and mark it as the most recently used entry
+//   - If the cache is full (Config.MaxSize) then
+//     the least recently inserted entry(the node before the tailNode)
+//     will be dropped and an EvictedEntry will be emitted to
+//     the EvictionChannel(if present) with EvictionReasonDropped
 func (c *tlru[K, V]) Set(key K, value V) error {
 	return c.set(key, value, nil)
 }
 
+// SetWithTimestamp is identical to the Set function but it allows to set the timestamp for the inserted entry
 func (c *tlru[K, V]) SetWithTimestamp(key K, value V, timestamp time.Time) error {
 	return c.set(key, value, &timestamp)
 }
@@ -266,6 +232,9 @@ func (c *tlru[K, V]) set(key K, value V, timestamp *time.Time) error {
 	return nil
 }
 
+// Delete removes the entry that corresponds to the provided key from cache
+// An EvictedEntry will be emitted to the EvictionChannel(if present)
+// with EvictionReasonDeleted
 func (c *tlru[K, V]) Delete(key K) {
 	defer c.Unlock()
 	c.Lock()
@@ -276,6 +245,9 @@ func (c *tlru[K, V]) Delete(key K) {
 	}
 }
 
+// Keys returns an unordered slice of all available keys in the cache
+// The order of keys is not guaranteed
+// It will also evict expired entries based on the TTL of the cache
 func (c *tlru[K, V]) Keys() []K {
 	c.Lock()
 	c.evictExpiredEntries()
@@ -292,6 +264,9 @@ func (c *tlru[K, V]) Keys() []K {
 	return keys
 }
 
+// Entries returns an unordered slice of all available entries in the cache
+// The order of entries is not guaranteed
+// It will also evict expired entries based on the TTL of the cache
 func (c *tlru[K, V]) Entries() []CacheEntry[K, V] {
 	c.Lock()
 	c.evictExpiredEntries()
@@ -308,6 +283,7 @@ func (c *tlru[K, V]) Entries() []CacheEntry[K, V] {
 	return entries
 }
 
+// Clear removes all entries from the cache and frees underlying resources
 func (c *tlru[K, V]) Clear() {
 	defer c.Unlock()
 	c.Lock()
@@ -320,6 +296,9 @@ func (c *tlru[K, V]) Clear() {
 	}
 }
 
+// GetState returns the internal State of the cache
+// This State can be put in persistent storage and rehydrated at a later point
+// via the SetState method
 func (c *tlru[K, V]) GetState() State[K, V] {
 	defer c.RUnlock()
 	c.RLock()
@@ -339,6 +318,7 @@ func (c *tlru[K, V]) GetState() State[K, V] {
 	return state
 }
 
+// SetState sets the internal State of the cache
 func (c *tlru[K, V]) SetState(state State[K, V]) error {
 	defer c.Unlock()
 	c.Lock()
@@ -369,6 +349,7 @@ func (c *tlru[K, V]) SetState(state State[K, V]) error {
 	return nil
 }
 
+// Has returns true if the provided keys exists in cache otherwise it returns false
 func (c *tlru[K, V]) Has(key K) bool {
 	defer c.RUnlock()
 	c.RLock()
