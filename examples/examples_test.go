@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/jahnestacado/tlru/v3"
@@ -14,24 +15,32 @@ var (
 	entry4 = tlru.Entry[string, int]{Key: "entry-4", Value: 4}
 	entry5 = tlru.Entry[string, int]{Key: "entry-5", Value: 5}
 
-	ttl = 2 * time.Millisecond
+	ttl = 100 * time.Millisecond
 )
 
 func ExampleLRA() {
 	evictionChannel := make(chan tlru.EvictedEntry[string, int])
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+
 	config := tlru.Config[string, int]{
-		MaxSize:                   2,
-		TTL:                       ttl,
-		EvictionPolicy:            tlru.LRA,
-		EvictionChannel:           &evictionChannel,
-		GarbageCollectionInterval: ttl,
+		MaxSize:         2,
+		TTL:             ttl,
+		EvictionPolicy:  tlru.LRA,
+		EvictionChannel: &evictionChannel,
 	}
 	cache := tlru.New(config)
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for {
-			evictedEntry := <-evictionChannel
-			fmt.Printf("Entry with key: '%s' has been evicted with reason: %s\n", evictedEntry.Key, evictedEntry.Reason.String())
+			select {
+			case evictedEntry := <-evictionChannel:
+				fmt.Printf("Entry with key: '%s' has been evicted with reason: %s\n", evictedEntry.Key, evictedEntry.Reason.String())
+			case <-done:
+				return
+			}
 		}
 	}()
 
@@ -62,6 +71,9 @@ func ExampleLRA() {
 	cachedEntry5 := cache.Get(entry5.Key)
 	fmt.Printf("Entry with key: '%s' has been accessed %d times\n", entry5.Key, cachedEntry5.Counter)
 
+	close(done)
+	wg.Wait()
+
 	// Output:
 	// Entry with key: 'entry-1' has been evicted with reason: Expired
 	// Entry with key: 'entry-2' has been evicted with reason: Dropped
@@ -76,19 +88,27 @@ func ExampleLRA() {
 
 func ExampleLRI() {
 	evictionChannel := make(chan tlru.EvictedEntry[string, int])
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+
 	config := tlru.Config[string, int]{
-		MaxSize:                   3,
-		TTL:                       ttl,
-		EvictionPolicy:            tlru.LRI,
-		EvictionChannel:           &evictionChannel,
-		GarbageCollectionInterval: ttl,
+		MaxSize:         3,
+		TTL:             ttl,
+		EvictionPolicy:  tlru.LRI,
+		EvictionChannel: &evictionChannel,
 	}
 	cache := tlru.New(config)
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for {
-			evictedEntry := <-evictionChannel
-			fmt.Printf("Entry with key: '%s' has been evicted with reason: %s\n", evictedEntry.Key, evictedEntry.Reason.String())
+			select {
+			case evictedEntry := <-evictionChannel:
+				fmt.Printf("Entry with key: '%s' has been evicted with reason: %s\n", evictedEntry.Key, evictedEntry.Reason.String())
+			case <-done:
+				return
+			}
 		}
 	}()
 
@@ -112,6 +132,9 @@ func ExampleLRI() {
 	fmt.Printf("Entry with key: '%s' has been inserted %d times\n", entry2.Key, cachedEntry2.Counter)
 	cachedEntry4 := cache.Get(entry4.Key)
 	fmt.Printf("Entry with key: '%s' has been inserted %d times\n", entry4.Key, cachedEntry4.Counter)
+
+	close(done)
+	wg.Wait()
 
 	// Output:
 	// Entry with key: 'entry-1' has been evicted with reason: Expired

@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        go: [ '1.18', '1.19', '1.20', '1.21', '1.22' ]
+        go: [ '1.18', '1.19', '1.20', '1.21', '1.22', '1.23', '1.24', '1.25']
     name: Go ${{ matrix.go }} sample
     steps:
     - uses: actions/checkout@v3
@@ -23,7 +23,7 @@ jobs:
 
     - name: Upload test coverage to Codecov
       uses: codecov/codecov-action@v4
-      if: matrix.go == '1.18'
+      if: matrix.go == '1.25'
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage.txt
