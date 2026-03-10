@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jahnestacado/tlru/v3"
+	"github.com/jahnestacado/tlru/v4"
 )
 
 var (

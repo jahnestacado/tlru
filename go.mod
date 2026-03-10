@@ -1,4 +1,4 @@
-module github.com/jahnestacado/tlru/v3
+module github.com/jahnestacado/tlru/v4
 
 go 1.18
 
