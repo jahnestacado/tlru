@@ -21,8 +21,6 @@ type Config[K comparable, V any] struct {
 	EvictionChannel *chan EvictedEntry[K, V]
 	// Eviction policy of tlru. Default is LRA
 	EvictionPolicy evictionPolicy
-	// GarbageCollectionInterval. If not set it defaults to 10 seconds
-	GarbageCollectionInterval time.Duration
 }
 
 // Entry in cache
@@ -95,19 +93,14 @@ const (
 	EvictionReasonDeleted
 )
 
-const (
-	defaultGarbageCollectionInterval = 10 * time.Second
-)
-
 // TLRU cache
 type TLRU[K comparable, V any] struct {
 	sync.RWMutex
-	cache                     map[K]*doublyLinkedNode[K, V]
-	config                    Config[K, V]
-	headNode                  *doublyLinkedNode[K, V]
-	tailNode                  *doublyLinkedNode[K, V]
-	garbageCollectionInterval time.Duration
-	garbageCollectionTimer    *time.Timer
+	cache                  map[K]*doublyLinkedNode[K, V]
+	config                 Config[K, V]
+	headNode               *doublyLinkedNode[K, V]
+	tailNode               *doublyLinkedNode[K, V]
+	garbageCollectionTimer *time.Timer
 }
 
 // New returns a new instance of TLRU cache
@@ -118,15 +111,9 @@ func New[K comparable, V any](config Config[K, V]) *TLRU[K, V] {
 	headNode.next = tailNode
 	tailNode.previous = headNode
 
-	garbageCollectionInterval := defaultGarbageCollectionInterval
-	if config.GarbageCollectionInterval > 0 {
-		garbageCollectionInterval = config.GarbageCollectionInterval
-	}
-
 	cache := &TLRU[K, V]{
-		config:                    config,
-		cache:                     make(map[K]*doublyLinkedNode[K, V]),
-		garbageCollectionInterval: garbageCollectionInterval,
+		config: config,
+		cache:  make(map[K]*doublyLinkedNode[K, V]),
 	}
 
 	cache.initializeDoublyLinkedList()
@@ -210,8 +197,10 @@ func (c *TLRU[K, V]) set(key K, value V, timestamp *time.Time) error {
 	defer c.Unlock()
 	c.Lock()
 
-	if c.garbageCollectionTimer == nil {
-		c.garbageCollectionTimer = time.AfterFunc(c.garbageCollectionInterval, func() {
+	if c.garbageCollectionTimer != nil {
+		c.garbageCollectionTimer.Reset(c.config.TTL)
+	} else {
+		c.garbageCollectionTimer = time.AfterFunc(c.config.TTL, func() {
 			c.Lock()
 			c.evictExpiredEntries()
 			c.Unlock()

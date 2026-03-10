@@ -16,6 +16,7 @@
   </p>
 </p>
 
+
 # TLRU
 
 ### A Time-aware Least Recently Used cache implementation in Go with configurable eviction policy
@@ -78,7 +79,6 @@ func main() {
 		TTL:                       ttl,
 		EvictionPolicy:            tlru.LRA,
 		EvictionChannel:           &evictionChannel,
-		GarbageCollectionInterval: ttl,
 	}
 	cache := tlru.New(config)
 
@@ -174,7 +174,6 @@ func main() {
 		TTL:                       ttl,
 		EvictionPolicy:            tlru.LRI,
 		EvictionChannel:           &evictionChannel,
-		GarbageCollectionInterval: ttl,
 	}
 	cache := tlru.New(config)
 
